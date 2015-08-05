@@ -7,14 +7,22 @@ from itertools import chain
 CMU_SYL_PATH = os.getcwd() + "/cmudict.syl"
 CMU_PATH = os.getcwd() + "/cmudict.rep"
 
+
 def flatten(lst):
     return list(chain.from_iterable(lst))
+
+def identical(lst):
+    return len(set(lst)) <= 1
 
 
 class RhymeDict(object):
 
     def __init__(self, path):
-
+        """Read phoneme and syllable data from the augmented CMU pronouncing
+        dictionary. Data is stored as a dictionary where keys are words
+        and values are lists of syllables, which are lists of phonemes as
+        per CMU format."""
+        
         self.words = {}
         
         with open(path) as f:
@@ -30,7 +38,7 @@ class RhymeDict(object):
 
                     self.words[word] = syls
 
-    def rhymes(self, a, b):
+    def rhymes(self, *args):
         """Returns True if given words all rhyme, False otherwise."""
         
         final_phone_sets = []
@@ -44,7 +52,7 @@ class RhymeDict(object):
                     
             final_phone_sets.append(phones[last_stressed_index:])
 
-        if final_phone_sets[0] == final_phone_sets[1]:
+        if identical(final_phone_sets):
             return True
         else:
             return False
