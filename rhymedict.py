@@ -42,7 +42,7 @@ class RhymeDict(object):
         """Returns True if given words all rhyme, False otherwise."""
         
         final_phone_sets = []
-        for word in [a, b]:
+        for word in args:
             phones = flatten(self.words[word.lower()])
             
             last_stressed_index = 0
