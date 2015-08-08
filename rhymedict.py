@@ -8,14 +8,23 @@ CMU_SYL_PATH = os.getcwd() + "/cmudict.syl"
 CMU_PATH = os.getcwd() + "/cmudict.rep"
 
 
+
 def flatten(lst):
+    """Collapse a nested list into a flat list"""
     return list(chain.from_iterable(lst))
 
 def identical(lst):
-    return len(set(lst)) <= 1
+    """Returns True if all items in given list are the same, False otherwise"""
+    return lst.count(lst[0]) == len(lst)
 
 
-class RhymeDict(object):
+class PoetryDict(object):
+
+    # Need to think of a good way to record metrical patterns. Start by
+    # writing function to recognise them, then generalise as necessary
+    metrical_types = {
+        "iamb": "_-"
+    }
 
     def __init__(self, path):
         """Read phoneme and syllable data from the augmented CMU pronouncing
@@ -52,12 +61,16 @@ class RhymeDict(object):
                     
             final_phone_sets.append(phones[last_stressed_index:])
 
+        print final_phone_sets
+
         if identical(final_phone_sets):
             return True
         else:
             return False
 
     def get_rhyming_words(self, word):
+        """Returns a list of all words in dictionary which rhyme with
+        given word."""
 
         result = []
         for candidate in self.words.iterkeys():
@@ -87,6 +100,50 @@ class RhymeDict(object):
 
         return len(self.words[word])
 
+    def count_stressed_syllables(self, word):
+
+        syllables = self.words[word]
+
+        count = 0
+        for syllable in syllables:
+            for phone in syllable:
+                if phone[-1] in ['1', '2']:
+                    count += 1
+
+        return count
+
+    def examine_string(self, s):
+        """Convenience method to help me reverse engineer Pentametron"""
+
+        for word in s.split():
+            print word, self.words[word.lower()]
+
+    @staticmethod
+    def stressed(syllable):
+
+        stress = False
+        for phone in syllable:
+            if phone[-1] in ['1', '2']:
+                stress = True
+
+        return stress
+        
+    def stress_pattern(self, s):
+
+        pattern = []
+        
+        for word in s.split():
+            syllables = self.words[word.lower()]
+
+            for syl in syllables:
+                if stressed(syl):
+                    pattern.append("-")
+                else:
+                    pattern.append("_")
+
+        return "".join(pattern)
+                    
+    
     def __getitem__(self, word):
         
         return self.words[word]
