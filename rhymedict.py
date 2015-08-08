@@ -8,7 +8,6 @@ CMU_SYL_PATH = os.getcwd() + "/cmudict.syl"
 CMU_PATH = os.getcwd() + "/cmudict.rep"
 
 
-
 def flatten(lst):
     """Collapse a nested list into a flat list"""
     return list(chain.from_iterable(lst))
@@ -23,7 +22,13 @@ class PoetryDict(object):
     # Need to think of a good way to record metrical patterns. Start by
     # writing function to recognise them, then generalise as necessary
     metrical_types = {
-        "iamb": "_-"
+        "iambic":       "_-",
+        "trochaic":     "-_",
+        "spondaic":     "--",
+        "anapestic":    "__-",
+        "dactylic":     "-__",
+        "pyrrhic":      "__",
+        "amphibrachic": "-_-"
     }
 
     def __init__(self, path):
@@ -118,6 +123,10 @@ class PoetryDict(object):
         for word in s.split():
             print word, self.words[word.lower()]
 
+    # Some of the following methods do pretty much the same thing, can
+    # clean them up when I know which versions to use in the more complex
+    # stuff.
+
     @staticmethod
     def stressed(syllable):
 
@@ -142,8 +151,18 @@ class PoetryDict(object):
                     pattern.append("_")
 
         return "".join(pattern)
-                    
-    
+
+    def find_meter(self, line):
+        """Determine what poetic meter a line is written in"""
+
+        stresses = self.stress_pattern(line)
+
+        for meter, pattern in self.metrical_types.iteritems():
+            if stresses.count(pattern) * len(pattern) == len(stresses):
+                return meter
+
+        return False
+        
     def __getitem__(self, word):
         
         return self.words[word]
