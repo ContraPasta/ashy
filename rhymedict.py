@@ -2,6 +2,7 @@
 import os
 import re
 import random
+import string
 from itertools import chain
 
 #CMU_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -20,6 +21,41 @@ def identical(lst):
 def random_entry(d):
     """Return a random key, value pair from given dict"""
     return random.choice(list(d.iteritems()))
+
+# Use some factory code to split the CMUdict lines and build the syllable
+# objects instead of hardcoding it into the constructor. then I can reuse
+# it on the OED or something
+class Syllable(object):
+
+    def __init__(self, phonemes, stress):
+
+        self.phonemes = phonemes
+        self.stressed = stress
+
+    def __repr__(self):
+        return "Syllable<{}, {}>".format(self.phonemes, self.stressed)
+
+
+class Word(object):
+
+    def __init__(self, text, syllables):
+
+        self.string = text.lower()
+        self.syllables = syllables
+
+    def stress_pattern(self):
+
+        pattern = []
+        for syl in self.syllables:
+            if syl.stressed:
+                pattern.append("-")
+            else:
+                pattern.append("_")
+
+        return pattern
+
+    def __repr__(self):
+        return "<Word: {}, {} syllables>".format(self.string, len(self.syllables))
 
 
 class PoetryDict(object):
@@ -190,4 +226,3 @@ class PoetryDict(object):
 
         return self.words[word]
 
-# Word should be a class, so I can do word.stress_pattern, word.syllables, etc
