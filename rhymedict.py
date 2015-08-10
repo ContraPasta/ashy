@@ -1,6 +1,7 @@
 # Rhyming dictionary module
 import os
 import re
+import random
 from itertools import chain
 
 #CMU_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -16,11 +17,13 @@ def identical(lst):
     """Returns True if all items in given list are the same, False otherwise"""
     return lst.count(lst[0]) == len(lst)
 
+def random_entry(d):
+    """Return a random key, value pair from given dict"""
+    return random.choice(list(d.iteritems()))
+
 
 class PoetryDict(object):
 
-    # Need to think of a good way to record metrical patterns. Start by
-    # writing function to recognise them, then generalise as necessary
     metrical_types = {
         "iambic":       "_-",
         "trochaic":     "-_",
@@ -36,9 +39,9 @@ class PoetryDict(object):
         dictionary. Data is stored as a dictionary where keys are words
         and values are lists of syllables, which are lists of phonemes as
         per CMU format."""
-        
+
         self.words = {}
-        
+
         with open(path) as f:
             lines = f.readlines()
 
@@ -54,16 +57,16 @@ class PoetryDict(object):
 
     def rhymes(self, *args):
         """Returns True if given words all rhyme, False otherwise."""
-        
+
         final_phone_sets = []
         for word in args:
             phones = flatten(self.words[word.lower()])
-            
+
             last_stressed_index = 0
             for index, phone in enumerate(phones):
                 if phone[-1] in ['1', '2']: # Primary or secondary stress
                     last_stressed_index = index
-                    
+
             final_phone_sets.append(phones[last_stressed_index:])
 
         print final_phone_sets
@@ -88,7 +91,6 @@ class PoetryDict(object):
         """Alliteration is a special case of consonance where the repeated
         consonant sound is at the stressed syllable. - Wiki"""
         pass
-        
 
     def get_alliterative_words(self, word):
         """Alliteration is a special case of consonance where the repeated
@@ -136,16 +138,16 @@ class PoetryDict(object):
                 stress = True
 
         return stress
-        
+
     def stress_pattern(self, s):
 
         pattern = []
-        
+
         for word in s.split():
             syllables = self.words[word.lower()]
 
             for syl in syllables:
-                if stressed(syl):
+                if self.stressed(syl):
                     pattern.append("-")
                 else:
                     pattern.append("_")
@@ -162,7 +164,30 @@ class PoetryDict(object):
                 return meter
 
         return False
-        
+
+    def generate_line_(self, foot, length):
+        """Randomly generate a line of poetry in the given meter"""
+
+        line = []
+        for i in xrange(length):
+            line.append(" ")
+            line.append(random_entry(self.words)[0])
+
+        return "".join(line)
+
+    def select_word_for_meter(self, foot):
+        """Randomly select a word from the dictionary with a stress
+        pattern that matches the specified foot."""
+        #while True: <- won't work, what if no word matches? Then it will
+        # loop forever. Proper approach is to filter first, then randomly
+        # select from filtered list.
+        word = random_entry(self.words)
+        if self.stress_pattern(word[0]) == foot:
+            return word
+        return False
+
     def __getitem__(self, word):
-        
+
         return self.words[word]
+
+# Word should be a class, so I can do word.stress_pattern, word.syllables, etc
