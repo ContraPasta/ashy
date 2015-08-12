@@ -18,41 +18,56 @@ def identical(lst):
     """Returns True if all items in given list are the same, False otherwise"""
     return lst.count(lst[0]) == len(lst)
 
-def random_entry(d):
-    """Return a random key, value pair from given dict"""
-    return random.choice(list(d.iteritems()))
-
-# Use some factory code to split the CMUdict lines and build the syllable
-# objects instead of hardcoding it into the constructor. then I can reuse
-# it on the OED or something
-class Syllable(object):
-
-    def __init__(self, phonemes, stress):
-
-        self.phonemes = phonemes
-        self.stressed = stress
-
-    def __repr__(self):
-        return "Syllable<{}, {}>".format(self.phonemes, self.stressed)
+def issubsequence(a, b):
+    """Returns True if a is a subsequence of b"""
+    return b[:len(a)] == a
 
 
 class Word(object):
+    """Represents an English word in the rhyming dictionary"""
+
+    # TODO:
+    # Support more levels of stress than just "stressed" or "unstressed"
+    # Support different levels of rhyme
+    # Method to determine consonance or alliteration with another Word
 
     def __init__(self, text, syllables):
 
         self.string = text.lower()
         self.syllables = syllables
+        self.phonemes = flatten(self.syllables)
+
+    def is_stressed(self, syllable):
+        """Determine whether a given syllable is stressed."""
+        return True if ('1' or '2') in ''.join(syllable) else False
 
     def stress_pattern(self):
-
+        """Return a representation of this word's pattern of stressed and
+        unstressed syllables."""
         pattern = []
-        for syl in self.syllables:
-            if syl.stressed:
+
+        for syllable in self.syllables:
+            if self.is_stressed(syllable):
                 pattern.append("-")
             else:
                 pattern.append("_")
 
         return pattern
+
+    def rhymeswith(self, word):
+        """Returns True if given Word instance rhymes with this one."""
+        final_phone_sets = []
+
+        for w in [self.phonemes, word.phonemes]:
+
+            last_stress_index = 0
+            for i, phone in enumerate(w):
+                if phone[-1] in ['1', '2']:
+                    last_stress_index = i
+
+            final_phone_sets.append(w[last_stress_index:])
+
+        return identical(final_phone_sets)
 
     def __repr__(self):
         return "<Word: {}, {} syllables>".format(self.string, len(self.syllables))
@@ -60,14 +75,18 @@ class Word(object):
 
 class PoetryDict(object):
 
-    metrical_types = {
-        "iambic":       "_-",
-        "trochaic":     "-_",
-        "spondaic":     "--",
-        "anapestic":    "__-",
-        "dactylic":     "-__",
-        "pyrrhic":      "__",
-        "amphibrachic": "-_-"
+    # TODO:
+    # If speed becomes a problem, the internal word dictionary could be
+    # reimplemented as a suffix tree, using the syllables?
+
+    foot_types = {
+        "iambic":       ['_', '-'],
+        "pyrrhic":      ['_', '_'],
+        "trochaic":     ['-', '_'],
+        "spondaic":     ['-', '-'],
+        "dactylic":     ['-', '_', '_'],
+        "anapestic":    ['_', '_', '-'],
+        "amphibrachic": ['-', '_', '-']
     }
 
     def __init__(self, path):
@@ -79,150 +98,64 @@ class PoetryDict(object):
         self.words = {}
 
         with open(path) as f:
-            lines = f.readlines()
+            lines = [line for line in f.readlines() if not line.startswith("#")]
 
             for line in lines:
-                if line[0] != "#":
-                    word = line.split()[0].lower()
-                    rest = line[len(word)+1:]
+                word = line.split()[0].lower()
+                rest = line[len(word)+1:]
 
-                    # Syllables are separated by -, individual phonemes by a space
-                    syls = [s.lstrip().rstrip().split() for s in rest.split("-")]
+                # Syllables are separated by -, individual phonemes by a space
+                syls = [s.lstrip().rstrip().split() for s in rest.split("-")]
 
-                    self.words[word] = syls
-
-    def rhymes(self, *args):
-        """Returns True if given words all rhyme, False otherwise."""
-
-        final_phone_sets = []
-        for word in args:
-            phones = flatten(self.words[word.lower()])
-
-            last_stressed_index = 0
-            for index, phone in enumerate(phones):
-                if phone[-1] in ['1', '2']: # Primary or secondary stress
-                    last_stressed_index = index
-
-            final_phone_sets.append(phones[last_stressed_index:])
-
-        print final_phone_sets
-
-        if identical(final_phone_sets):
-            return True
-        else:
-            return False
+                self.words[word] = Word(word, syls)
 
     def get_rhyming_words(self, word):
-        """Returns a list of all words in dictionary which rhyme with
-        given word."""
+        """Returns a list of all words in dictionary which rhyme 
+        with given word."""
+        wobj = self.words[word]
+        return [w.string for w in self.words.itervalues() if w.rhymeswith(wobj)]
 
-        result = []
-        for candidate in self.words.iterkeys():
-            if self.rhymes(word, candidate):
-                result.append(candidate)
+    def meter(self, line):
+        """Determine which meter the given line is written in."""
+        line_pat = []
+        for word in line.split():
+            word_pattern = self.words[word.lower()].stress_pattern()
+            line_pat.extend(word_pattern)
 
-        return result
+        # I convert both pattern lists to strings because it's easier to
+        # find subsequences this way, using .count
+        line_pat = ''.join(line_pat)
 
-    def alliteration(self, a, b):
-        """Alliteration is a special case of consonance where the repeated
-        consonant sound is at the stressed syllable. - Wiki"""
-        pass
-
-    def get_alliterative_words(self, word):
-        """Alliteration is a special case of consonance where the repeated
-        consonant sound is at the stressed syllable. - Wiki"""
-
-        result = []
-        for candidate, syllables in self.words.iteritems():
-            if flatten(self.words[word])[0] == flatten(syllables)[0]:
-                result.append(candidate)
-
-        return result
-
-    def num_syllables(self, word):
-
-        return len(self.words[word])
-
-    def count_stressed_syllables(self, word):
-
-        syllables = self.words[word]
-
-        count = 0
-        for syllable in syllables:
-            for phone in syllable:
-                if phone[-1] in ['1', '2']:
-                    count += 1
-
-        return count
-
-    def examine_string(self, s):
-        """Convenience method to help me reverse engineer Pentametron"""
-
-        for word in s.split():
-            print word, self.words[word.lower()]
-
-    # Some of the following methods do pretty much the same thing, can
-    # clean them up when I know which versions to use in the more complex
-    # stuff.
-
-    @staticmethod
-    def stressed(syllable):
-
-        stress = False
-        for phone in syllable:
-            if phone[-1] in ['1', '2']:
-                stress = True
-
-        return stress
-
-    def stress_pattern(self, s):
-
-        pattern = []
-
-        for word in s.split():
-            syllables = self.words[word.lower()]
-
-            for syl in syllables:
-                if self.stressed(syl):
-                    pattern.append("-")
-                else:
-                    pattern.append("_")
-
-        return "".join(pattern)
-
-    def find_meter(self, line):
-        """Determine what poetic meter a line is written in"""
-
-        stresses = self.stress_pattern(line)
-
-        for meter, pattern in self.metrical_types.iteritems():
-            if stresses.count(pattern) * len(pattern) == len(stresses):
-                return meter
-
+        for name, foot_pat in self.foot_types.iteritems():
+            foot_pat = ''.join(foot_pat)
+            if line_pat.count(foot_pat) * len(foot_pat) == len(line_pat):
+                return name
         return False
 
-    def generate_line_(self, foot, length):
-        """Randomly generate a line of poetry in the given meter"""
+    def words_for_pattern(self, pattern):
+        """Return all words in the dictionary which have a stress pattern
+        that fits into the given pattern."""
+        result = []
+        for word in self.words.itervalues():
+            if issubsequence(word.stress_pattern(), pattern):
+                result.append(word)
+        return result
 
+    def random_line(self, foot, length):
+        """Generate a new line using the specified metrical foot."""
+        # Without line-based stress analysis this is very unsatisfactory.
         line = []
-        for i in xrange(length):
-            line.append(" ")
-            line.append(random_entry(self.words)[0])
+        pattern = self.foot_types[foot] * length
+        
+        while pattern:
+            print "Remaining pattern: {}".format(pattern)
+            candidates = self.words_for_pattern(pattern)
+            print "Number of candidates: {}".format(len(candidates))
+            choice = random.choice(candidates)
+            line.append(choice.string)
+            pattern = pattern[len(choice.syllables):]
 
-        return "".join(line)
-
-    def select_word_for_meter(self, foot):
-        """Randomly select a word from the dictionary with a stress
-        pattern that matches the specified foot."""
-        #while True: <- won't work, what if no word matches? Then it will
-        # loop forever. Proper approach is to filter first, then randomly
-        # select from filtered list.
-        word = random_entry(self.words)
-        if self.stress_pattern(word[0]) == foot:
-            return word
-        return False
+        return ' '.join(line)
 
     def __getitem__(self, word):
-
         return self.words[word]
-
