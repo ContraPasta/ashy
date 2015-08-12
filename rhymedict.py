@@ -144,6 +144,15 @@ class PoetryDict(object):
     def random_line(self, foot, length):
         """Generate a new line using the specified metrical foot."""
         # Without line-based stress analysis this is very unsatisfactory.
+        # It's unsatisfactory for other reasons - when you're randomly
+        # generating text, you can guide the random selection by restricting
+        # it to words with certain properties. If none of these are "semantic"
+        # properties then the text is just boring gibberish, even if you
+        # selected so it lined up sounds. This is why Markov text works well,
+        # the Markov property has the effect of "simulating" grammar. What I'm
+        # going to try next is selecting words using a Markov chain, but also
+        # filtering the possible choices at each node of the graph by rhyme,
+        # alliteration, and stress to hopefully produce "metrical" Markov text.
         line = []
         pattern = self.foot_types[foot] * length
         
