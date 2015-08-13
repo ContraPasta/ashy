@@ -3,6 +3,7 @@ import os
 import re
 import random
 import string
+import pykov
 from itertools import chain
 
 #CMU_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -168,3 +169,4 @@ class PoetryDict(object):
 
     def __getitem__(self, word):
         return self.words[word]
+                
