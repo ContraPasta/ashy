@@ -90,7 +90,7 @@ class PoetryDict(object):
         "amphibrachic": ['-', '_', '-']
     }
 
-    def __init__(self, path):
+    def __init__(self, path=CMU_SYL_PATH):
         """Read phoneme and syllable data from the augmented CMU pronouncing
         dictionary. Data is stored as a dictionary where keys are words
         and values are lists of syllables, which are lists of phonemes as

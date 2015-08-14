@@ -38,7 +38,17 @@ class VerseGenerator(object):
             freqs = [(w, c / len(nexts)) for w, c in Counter(nexts).most_common()]
             self.chain[word] = freqs
 
-    def roulette_select(self, pairs):
+        # Needed for randomly selecting any word
+        self.all_words = [word for word in self.chain.iterkeys()]
+
+        self.poetrydict = rhymedict.PoetryDict()
+
+    def _random_word(self):
+        """Randomly select anyword from the Markov chain. Need because
+        you can't random.choice an iterator, like .iterkeys()"""
+        return random.choice([word for word in self.chain.iterkeys()])
+
+    def _roulette_select(self, pairs):
         """Roulette wheel selection"""
 
         r = random.random()
@@ -47,6 +57,22 @@ class VerseGenerator(object):
         for pair in pairs:
             current_sum += pair[1]
             if r <= current_sum:
-                return pair
+                return pair[0]
 
         return None
+
+    # Anything that actually generates the verse belongs in this module
+    def random_line(self, length):
+        """Generate a random line of verse of given length"""
+
+        line = []
+
+        word = self._random_word()
+        while len(line) < length:
+            if word:
+                line.append(word)
+                word = self._roulette_select(self.chain[word])
+            else:
+                word = self._random_word()
+
+        return ' '.join(line)
