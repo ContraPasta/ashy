@@ -4,15 +4,15 @@ import itertools
 CMU_PATH = 'cmudict.syl'
 
 def flatten(lst):
-    """Collapse a nested list into a flat list"""
-    return list(chain.from_iterable(lst))
+    '''Collapse a nested list into a flat list'''
+    return list(itertools.chain.from_iterable(lst))
 
 def identical(lst):
-    """Returns True if all items in given list are the same, False otherwise"""
+    '''Returns True if all items in given list are the same, False otherwise'''
     return lst.count(lst[0]) == len(lst)
 
 def issubsequence(a, b):
-    """Returns True if a is a subsequence of b"""
+    '''Returns True if a is a subsequence of b'''
     return b[:len(a)] == a
 
 
@@ -22,14 +22,14 @@ def load_cmu_data(path):
     word_table = {}
 
     with open(path) as f:
-        lines = [line for line in f.readlines() if not line.startswith("#")]
+        lines = [line for line in f.readlines() if not line.startswith('#')]
         
         for line in lines:
             word = line.split()[0].lower()
             rest = line[len(word)+1:]
 
             # Syllables are separated by -, individual phonemes by a space
-            syls = [s.lstrip().rstrip().split() for s in rest.split("-")]
+            syls = [s.lstrip().rstrip().split() for s in rest.split('-')]
 
             word_table[word] = syls
 
@@ -41,13 +41,18 @@ def load_cmu_data(path):
 CMU_DATA = load_cmu_data(CMU_PATH)
 
 
-class Word(object):
-    """Represents an English word in the rhyming dictionary"""
+class Word(unicode):
+    '''Represents an English word in the rhyming dictionary'''
 
     # TODO:
-    # Support more levels of stress than just "stressed" or "unstressed"
+    # Support more levels of stress than just 'stressed' or 'unstressed'
     # Support different levels of rhyme
     # Method to determine consonance or alliteration with another Word
+    # Possibly, inherit from TextBlob's excellent Word class, with its
+    # lemmatization, Wordnet integration methods
+    # Raise more informative exceptions, what happens if I try to load
+    # a word with no entry in the CMU dict?
+    # Optional syllable arg
 
     def __init__(self, strng):
 
@@ -56,24 +61,24 @@ class Word(object):
         self.phonemes = flatten(self.syllables)
 
     def is_stressed(self, syllable):
-        """Determine whether a given syllable is stressed."""
+        '''Determine whether a given syllable is stressed.'''
         return True if ('1' or '2') in ''.join(syllable) else False
 
     def stress_pattern(self):
-        """Return a representation of this word's pattern of stressed and
-        unstressed syllables."""
+        '''Return a representation of this word's pattern of stressed and
+        unstressed syllables.'''
         pattern = []
 
         for syllable in self.syllables:
             if self.is_stressed(syllable):
-                pattern.append("-")
+                pattern.append('-')
             else:
-                pattern.append("_")
+                pattern.append('_')
 
         return pattern
 
     def rhymeswith(self, word):
-        """Returns True if given Word instance rhymes with this one."""
+        '''Returns True if given Word instance rhymes with this one.'''
         final_phone_sets = []
 
         for w in [self.phonemes, word.phonemes]:
@@ -88,4 +93,7 @@ class Word(object):
         return identical(final_phone_sets)
 
     def __repr__(self):
-        return "<Word: {}, {} syllables>".format(self.string, len(self.syllables))
+        return 'Word({})'.format(self.string)
+
+    def __str__(self):
+        return self.string
