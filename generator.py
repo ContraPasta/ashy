@@ -1,3 +1,4 @@
+from __future__ import division
 import random
 import phonology
 from collections import Counter
@@ -27,13 +28,14 @@ class VerseGenerator(object):
         for word, succ in self.chain.iteritems():
             self.chain[word] = Counter(succ).most_common()
 
-        self.words = [w for w in self.chain.iterkeys()]
+        self.all_words = [w for w in self.chain.iterkeys()]
             
     def _select(self, pairs):
         '''Roulette wheel selection from markov chain'''
         r = random.random()
         current_sum = 0
-        for word, prob in pairs:
+        for word, count in pairs:
+            prob = count / len(pairs)
             current_sum += prob
             if r <= current_sum:
                 return word
@@ -41,5 +43,21 @@ class VerseGenerator(object):
 
     def random_line(self, length, stress_pattern=None):
         '''Generate a random line from markov chain'''
-        pass
+        line = [random.choice(self.all_words)]
+        while len(line) < length:
+            candidates = self.chain[line[-1]]
+            if candidates:
+                w = self._select(candidates)
+            # A word was selected with no following words
+            else:
+                w = random.choice(self.all_words)
+            line.append(w)
+        return ' '.join(line)
+
+    def random_block(self, nwords, nlines):
+        '''Generate a set of random lines.'''
+        block = []
+        while len(block) < nlines:
+            block.append(self.random_line(nwords))
+        return block
         
