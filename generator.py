@@ -1,8 +1,23 @@
 from __future__ import division
 import random
 import phonology
-from collections import Counter
-from string import punctuation as punc
+from collections import Counter, namedtuple
+from string import punctuation
+
+
+def chunks(lst, n):
+    '''Split a list into chunks of length n'''
+    n = max(1, n)
+    return [lst[i:i + n] for i in xrange(0, len(lst), n)]
+
+def tokenise(text):
+    '''Split given text into a list of words for each sentence'''
+    # This should probably be replaced with a real tokeniser.
+    sents = []
+    for sent in [s.split() for s in text.split('.')]:
+        sents.append([w.lower().strip(punctuation) for w in sent])
+    return sents
+
 
 class VerseGenerator(object):
 
@@ -10,14 +25,11 @@ class VerseGenerator(object):
         '''Build a markov chain from the given source text.'''
         self.chain = {}
         self.words = []
-        
-        # This should probably be replaced with a real tokeniser.
-        # FIXME: Stripping should be done to each word
-        sents = [s.lower().strip(punc) for s in source_text.split('.')]
 
+        sents = tokenise(source_text)
         for sent in sents:
             previous = None
-            for strng in sent.split():
+            for strng in sent:
                 current = phonology.Word(strng)
                 if current not in self.chain:
                     self.chain[current] = []
@@ -29,7 +41,7 @@ class VerseGenerator(object):
             self.chain[word] = Counter(succ).most_common()
 
         self.all_words = [w for w in self.chain.iterkeys()]
-            
+
     def _select(self, pairs):
         '''Roulette wheel selection from markov chain'''
         r = random.random()
@@ -41,6 +53,10 @@ class VerseGenerator(object):
                 return word
         return None
 
+    def _random_word(self):
+        '''Return any random word from the markov chain'''
+        return random.choice(self.all_words)
+    
     def random_line(self, length, stress_pattern=None):
         '''Generate a random line from markov chain'''
         line = [random.choice(self.all_words)]
@@ -48,6 +64,9 @@ class VerseGenerator(object):
             candidates = self.chain[line[-1]]
             if candidates:
                 w = self._select(candidates)
+            # TODO: Random any word should only return words with
+            # followers, which would avoid this check and make things
+            # neater
             # A word was selected with no following words
             else:
                 w = random.choice(self.all_words)
@@ -60,4 +79,31 @@ class VerseGenerator(object):
         while len(block) < nlines:
             block.append(self.random_line(nwords))
         return block
+
+    def random_rhyming_verse(self, nwords, nlines):
+        '''Generate a random verse in rhyming couplets'''
+        # TODO:
+        # - Encapsulate the index and selection parts so they're
+        # easy to reuse for different checks
+        # - Change random any word func
+        # - What happens when there are no rhyming words?
         
+        total_words = nwords * nlines
+        words = [self._random_word()]
+        
+        for i in xrange(2, total_words + 1):
+            cands = self.chain[words[-1]]
+            if cands:
+                # If we've reached the end of a line and there's a
+                # previous line in the pattern to rhyme it with
+                if i % nwords == 0 and i != nwords:
+                    prev_last_w = words[i - nwords]
+                    cands = [p for p in cands if p[0].rhymeswith(prev_last_w)]
+                w = self._select(cands)
+            else:
+                w = self._random_word()
+            words.append(w)
+
+        print words
+        lines = [' '.join(line) for line in chunks(words, nwords)]
+        return '\n'.join(lines)

@@ -50,15 +50,17 @@ class Word(unicode):
     # Method to determine consonance or alliteration with another Word
     # Possibly, inherit from TextBlob's excellent Word class, with its
     # lemmatization, Wordnet integration methods
-    # Raise more informative exceptions, what happens if I try to load
-    # a word with no entry in the CMU dict?
-    # Optional syllable arg
 
     def __init__(self, strng):
 
         self.string = strng.lower()
-        self.syllables = CMU_DATA[strng.lower()]
-        self.phonemes = flatten(self.syllables)
+        try:
+            self.syllables = CMU_DATA[strng.lower()]
+            self.phonemes = flatten(self.syllables)
+        # Word has no pronounciation information in dictionary used
+        except KeyError:
+            self.syllables = []
+            self.phonemes = []
 
     def is_stressed(self, syllable):
         '''Determine whether a given syllable is stressed.'''
@@ -97,3 +99,4 @@ class Word(unicode):
 
     def __str__(self):
         return self.string
+
