@@ -26,30 +26,28 @@ class VerseGenerator(object):
         self.chain = {}
         self.import_text(source_text)
 
-     def import_text(self, source_text):
-        '''Add the given text to the markov chain.'''
-        sents = tokenise(source_text)
-        for sent in sents:
+    def import_text(self, source_text):
+        '''Add the given block of text to the markov chain'''
+        sentences = tokenise(source_text)
+        for sentence in sentences:
             previous = None
-            for strng in sent:
+            for strng in sentence:
                 current = phonology.Word(strng)
                 if current not in self.chain:
-                    self.chain[current] = []
+                    self.chain[current] = {}
                 if previous:
-                    self.chain[previous].append(current)
+                    if current not in self.chain[previous]:
+                        self.chain[previous][current] = 1
+                    else:
+                        self.chain[previous][current] += 1
                 previous = current
-
-        # Calculating this inline will be more efficient as the chain
-        # gets bigger
-        for word, succ in self.chain.iteritems():
-            self.chain[word] = Counter(succ).most_common()        
- 
-    def _select(self, pairs):
+                
+    def _select(self, counter):
         '''Roulette wheel selection from markov chain'''
         r = random.random()
         current_sum = 0
-        for word, count in pairs:
-            prob = count / len(pairs)
+        for word, count in counter.iteritems():
+            prob = count / len(counter)
             current_sum += prob
             if r <= current_sum:
                 return word
