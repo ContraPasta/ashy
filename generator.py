@@ -24,8 +24,10 @@ class VerseGenerator(object):
     def __init__(self, source_text):
         '''Build a markov chain from the given source text.'''
         self.chain = {}
-        self.words = []
+        self.import_text(source_text)
 
+     def import_text(self, source_text):
+        '''Add the given text to the markov chain.'''
         sents = tokenise(source_text)
         for sent in sents:
             previous = None
@@ -37,11 +39,11 @@ class VerseGenerator(object):
                     self.chain[previous].append(current)
                 previous = current
 
+        # Calculating this inline will be more efficient as the chain
+        # gets bigger
         for word, succ in self.chain.iteritems():
-            self.chain[word] = Counter(succ).most_common()
-
-        self.all_words = [w for w in self.chain.iterkeys()]
-
+            self.chain[word] = Counter(succ).most_common()        
+ 
     def _select(self, pairs):
         '''Roulette wheel selection from markov chain'''
         r = random.random()
@@ -54,22 +56,20 @@ class VerseGenerator(object):
         return None
 
     def _random_word(self):
-        '''Return any random word from the markov chain'''
-        return random.choice(self.all_words)
+        '''Return any random word from the markov chain, if it has
+        words following it.'''
+        return random.choice([w for w in self.chain.iterkeys()])
     
     def random_line(self, length, stress_pattern=None):
         '''Generate a random line from markov chain'''
-        line = [random.choice(self.all_words)]
+        line = [self._random_word()]
         while len(line) < length:
             candidates = self.chain[line[-1]]
             if candidates:
                 w = self._select(candidates)
-            # TODO: Random any word should only return words with
-            # followers, which would avoid this check and make things
-            # neater
             # A word was selected with no following words
             else:
-                w = random.choice(self.all_words)
+                w = random.choice(self._random_word())
             line.append(w)
         return ' '.join(line)
 
