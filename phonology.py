@@ -41,7 +41,7 @@ def load_cmu_data(path):
 CMU_DATA = load_cmu_data(CMU_PATH)
 
 
-class Word(unicode):
+class Word(object):
     '''Represents an English word in the rhyming dictionary'''
 
     # TODO:
@@ -95,7 +95,7 @@ class Word(unicode):
         return identical(final_phone_sets)
 
     def __repr__(self):
-        return 'Word({})'.format(self.string)
+        return u'Word({})'.format(self.string)
 
     def __str__(self):
         return self.string

@@ -1,4 +1,6 @@
 from __future__ import division
+import os
+import codecs
 import random
 import phonology
 from collections import Counter, namedtuple
@@ -18,13 +20,23 @@ def tokenise(text):
         sents.append([w.lower().strip(punctuation) for w in sent])
     return sents
 
+def test_loader():
+    for root, _, fpaths in os.walk(os.getcwd() + '/corpus/'):
+        texts = []
+        for path in fpaths:
+            fullpath = os.path.join(root, path)
+            print fullpath
+            with open(fullpath) as f:
+                texts.append(f.read())
+    return texts
 
 class VerseGenerator(object):
 
-    def __init__(self, source_text):
+    def __init__(self, source_text=None):
         '''Build a markov chain from the given source text.'''
         self.chain = {}
-        self.import_text(source_text)
+        if source_text:
+            self.import_text(source_text)
 
     def import_text(self, source_text):
         '''Add the given block of text to the markov chain'''
@@ -41,7 +53,17 @@ class VerseGenerator(object):
                     else:
                         self.chain[previous][current] += 1
                 previous = current
-                
+
+    def import_corpus(self, folder):
+        '''Load text files in given folder and any subfolders into the
+        markov chain.'''
+        for root, _, fpaths in os.walk(folder):
+            for path in fpaths:
+                fullpath = os.path.join(root, path)
+                with codecs.open(fullpath, 'r', 'utf-8-sig') as f:
+                    text = f.read()
+                    self.import_text(text)
+
     def _select(self, counter):
         '''Roulette wheel selection from markov chain'''
         r = random.random()
@@ -57,7 +79,7 @@ class VerseGenerator(object):
         '''Return any random word from the markov chain, if it has
         words following it.'''
         return random.choice([w for w in self.chain.iterkeys()])
-    
+
     def random_line(self, length, stress_pattern=None):
         '''Generate a random line from markov chain'''
         line = [self._random_word()]
@@ -85,10 +107,10 @@ class VerseGenerator(object):
         # easy to reuse for different checks
         # - Change random any word func
         # - What happens when there are no rhyming words?
-        
+
         total_words = nwords * nlines
         words = [self._random_word()]
-        
+
         for i in xrange(2, total_words + 1):
             cands = self.chain[words[-1]]
             if cands:
@@ -102,6 +124,6 @@ class VerseGenerator(object):
                 w = self._random_word()
             words.append(w)
 
-        print words
+        print(words)
         lines = [' '.join(line) for line in chunks(words, nwords)]
         return '\n'.join(lines)
