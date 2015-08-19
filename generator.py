@@ -1,9 +1,14 @@
 import os
+import regex
 import random
 import phonology
 from collections import Counter, namedtuple
 from string import punctuation
 
+def strip_punctuation(s):
+    '''Strip all punctuation characters, including unicode punctuation,
+    from given string.'''
+    return regex.sub('\p{P}+', '', s)
 
 def chunks(lst, n):
     '''Split a list into chunks of length n'''
@@ -15,7 +20,7 @@ def tokenise(text):
     # This should probably be replaced with a real tokeniser.
     sents = []
     for sent in [s.split() for s in text.split('.')]:
-        sents.append([w.lower().strip(punctuation) for w in sent])
+        sents.append([strip_punctuation(w.lower()) for w in sent])
     return sents
 
 def test_loader():
@@ -34,9 +39,9 @@ class VerseGenerator(object):
         '''Build a markov chain from the given source text.'''
         self.chain = {}
         if source_text:
-            self.import_text(source_text)
+            self.load_text(source_text)
 
-    def import_text(self, source_text):
+    def load_text(self, source_text):
         '''Add the given block of text to the markov chain'''
         sentences = tokenise(source_text)
         for sentence in sentences:
@@ -52,7 +57,7 @@ class VerseGenerator(object):
                         self.chain[previous][current] += 1
                 previous = current
 
-    def import_corpus(self, folder):
+    def load_corpus(self, folder):
         '''Load text files in given folder and any subfolders into the
         markov chain.'''
         for root, _, fpaths in os.walk(folder):
@@ -60,7 +65,7 @@ class VerseGenerator(object):
                 fullpath = os.path.join(root, path)
                 with codecs.open(fullpath, 'r', 'utf-8-sig') as f:
                     text = f.read()
-                    self.import_text(text)
+                    self.load_text(text)
 
     def _select(self, counter):
         '''Roulette wheel selection from markov chain'''
@@ -72,6 +77,13 @@ class VerseGenerator(object):
             if r <= current_sum:
                 return word
         return None
+
+    def _filter_select(self, counter, method, arg=None):
+        '''Like roulette wheel selection, but filters the candidate
+        words in `counter` according to the criteria given in 
+        `restrictions` before selection.'''
+        filtered = {w, c for w, c in counter.items() if method(w, arg)}
+        return self._select(filtered)
 
     def _random_word(self):
         '''Return any random word from the markov chain, if it has
@@ -100,14 +112,13 @@ class VerseGenerator(object):
 
     def rhyming_couplet(self, nwords):
         '''Generate a random rhyming couplet'''
+        # What if the last word of the first line has no CMU data?
         line1 = self.random_line(nwords)
+        last1 = line1[-1]
         while True:
             line2 = self.random_line(nwords)
-            #print(line1, line2)
-            if line1[-1].rhymeswith(line2[-1]):
+            last2 = line2[-1]
+            if last1.rhymeswith(last2) and last1 != last2:
                 break
         return '\n'.join([' '.join(l) for l in [line1, line2]])
-        
-        
 
-        
