@@ -1,6 +1,4 @@
-from __future__ import division
 import os
-import codecs
 import random
 import phonology
 from collections import Counter, namedtuple
@@ -25,7 +23,7 @@ def test_loader():
         texts = []
         for path in fpaths:
             fullpath = os.path.join(root, path)
-            print fullpath
+            print(fullpath)
             with open(fullpath) as f:
                 texts.append(f.read())
     return texts
@@ -68,7 +66,7 @@ class VerseGenerator(object):
         '''Roulette wheel selection from markov chain'''
         r = random.random()
         current_sum = 0
-        for word, count in counter.iteritems():
+        for word, count in counter.items():
             prob = count / len(counter)
             current_sum += prob
             if r <= current_sum:
@@ -78,7 +76,7 @@ class VerseGenerator(object):
     def _random_word(self):
         '''Return any random word from the markov chain, if it has
         words following it.'''
-        return random.choice([w for w in self.chain.iterkeys()])
+        return random.choice([w for w in self.chain.keys()])
 
     def random_line(self, length, stress_pattern=None):
         '''Generate a random line from markov chain'''
@@ -89,9 +87,9 @@ class VerseGenerator(object):
                 w = self._select(candidates)
             # A word was selected with no following words
             else:
-                w = random.choice(self._random_word())
+                w = self._random_word()
             line.append(w)
-        return ' '.join(line)
+        return line
 
     def random_block(self, nwords, nlines):
         '''Generate a set of random lines.'''
@@ -100,30 +98,16 @@ class VerseGenerator(object):
             block.append(self.random_line(nwords))
         return block
 
-    def random_rhyming_verse(self, nwords, nlines):
-        '''Generate a random verse in rhyming couplets'''
-        # TODO:
-        # - Encapsulate the index and selection parts so they're
-        # easy to reuse for different checks
-        # - Change random any word func
-        # - What happens when there are no rhyming words?
+    def rhyming_couplet(self, nwords):
+        '''Generate a random rhyming couplet'''
+        line1 = self.random_line(nwords)
+        while True:
+            line2 = self.random_line(nwords)
+            #print(line1, line2)
+            if line1[-1].rhymeswith(line2[-1]):
+                break
+        return '\n'.join([' '.join(l) for l in [line1, line2]])
+        
+        
 
-        total_words = nwords * nlines
-        words = [self._random_word()]
-
-        for i in xrange(2, total_words + 1):
-            cands = self.chain[words[-1]]
-            if cands:
-                # If we've reached the end of a line and there's a
-                # previous line in the pattern to rhyme it with
-                if i % nwords == 0 and i != nwords:
-                    prev_last_w = words[i - nwords]
-                    cands = [p for p in cands if p[0].rhymeswith(prev_last_w)]
-                w = self._select(cands)
-            else:
-                w = self._random_word()
-            words.append(w)
-
-        print(words)
-        lines = [' '.join(line) for line in chunks(words, nwords)]
-        return '\n'.join(lines)
+        

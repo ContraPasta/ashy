@@ -41,7 +41,7 @@ def load_cmu_data(path):
 CMU_DATA = load_cmu_data(CMU_PATH)
 
 
-class Word(object):
+class Word(str):
     '''Represents an English word in the rhyming dictionary'''
 
     # TODO:
