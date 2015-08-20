@@ -82,7 +82,7 @@ class VerseGenerator(object):
         '''Like roulette wheel selection, but filters the candidate
         words in `counter` according to the criteria given in 
         `restrictions` before selection.'''
-        filtered = {w, c for w, c in counter.items() if method(w, arg)}
+        filtered = {w: c for w, c in counter.items() if method(w, arg)}
         return self._select(filtered)
 
     def _filter_counter(self, counter, method, *args):
@@ -126,4 +126,25 @@ class VerseGenerator(object):
             if last1.rhymeswith(last2) and last1 != last2:
                 break
         return '\n'.join([' '.join(l) for l in [line1, line2]])
+
+    def construct_line(self, length, constraints=None):
+        '''Search the markov chain graph in depth-first order for a
+        for a sequence of words rooted at a randomly selected word, as
+        close to the given length as possible.
+        '''
+        stack = [(self._random_word(), None, 0)]
+        current = None
+
+        while stack and level < length:
+            current = stack.pop()
+            level = current[3]
+            for node in self.chain[current[0]]:
+                stack.append((level + 1, node, current))
+
+        line = []
+        for i in range(level):
+            line.append(current[0])
+            current = current[1]
+
+        return line
 
