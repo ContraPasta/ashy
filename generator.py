@@ -85,6 +85,11 @@ class VerseGenerator(object):
         filtered = {w, c for w, c in counter.items() if method(w, arg)}
         return self._select(filtered)
 
+    def _filter_counter(self, counter, method, *args):
+        '''As above but return filtered counter instead of doing the
+        selection.'''
+        return {w: c for w, c in counter.items() if method(w, *args)}
+
     def _random_word(self):
         '''Return any random word from the markov chain, if it has
         words following it.'''

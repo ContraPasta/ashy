@@ -79,6 +79,10 @@ class Word(str):
 
         return pattern
 
+    def matches_pattern(self, pattern):
+        '''Returns True if word fits into the given stress pattern.'''
+        return pattern == self.stress_pattern()
+
     def rhymeswith(self, word):
         '''Returns True if given Word instance rhymes with this one.'''
         final_phone_sets = []
