@@ -127,19 +127,30 @@ class VerseGenerator(object):
                 break
         return '\n'.join([' '.join(l) for l in [line1, line2]])
 
-    def construct_line(self, length, constraints=None):
+    def construct_line(self, length, constraints=[]):
         '''Search the markov chain graph in depth-first order for a
-        for a sequence of words rooted at a randomly selected word, as
-        close to the given length as possible.
+        for a random sequence of words rooted at a randomly selected
+        word, as close to the given length as possible.
         '''
+        level = 0
         stack = [(self._random_word(), None, 0)]
         current = None
 
         while stack and level < length:
             current = stack.pop()
-            level = current[3]
-            for node in self.chain[current[0]]:
-                stack.append((level + 1, node, current))
+            level = current[2]
+            adj = self.chain[current[0]]
+
+            # Apply constraints, if any. Constraints supplied as tuples:
+            # (index, method, args)
+            for con in constraints:
+                if con[0] == level:
+                    adj = self._filter_counter(adj, con[1], con[2])
+            
+            succ = [word for word in adj]
+            random.shuffle(succ)
+            for word in succ:
+                stack.append((word, current, level + 1))
 
         line = []
         for i in range(level):
