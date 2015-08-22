@@ -83,13 +83,16 @@ class Word(str):
         '''Returns True if word fits into the given stress pattern.'''
         return pattern == self.stress_pattern()
 
-    def rhymeswith(self, word):
-        '''Returns True if given Word instance rhymes with this one.'''
+    def rhymeswith(self, word, exclusive=True):
+        '''Returns True if given Word instance rhymes with this one.
+        '''
+        if exclusive and self.string == word.string:
+            return False
+        
         final_phone_sets = []
-
         for w in [self.phonemes, word.phonemes]:
-
             last_stress_index = 0
+
             for i, phone in enumerate(w):
                 if phone[-1] in ['1', '2']:
                     last_stress_index = i

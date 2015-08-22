@@ -1,9 +1,9 @@
 import os
 import regex
 import random
-import phonology
-from collections import Counter, namedtuple
 from string import punctuation
+from collections import Counter, namedtuple
+from phonology import Word
 
 def strip_punctuation(s):
     '''Strip all punctuation characters, including unicode punctuation,
@@ -23,17 +23,10 @@ def tokenise(text):
         sents.append([strip_punctuation(w.lower()) for w in sent])
     return sents
 
-def test_loader():
-    for root, _, fpaths in os.walk(os.getcwd() + '/corpus/'):
-        texts = []
-        for path in fpaths:
-            fullpath = os.path.join(root, path)
-            print(fullpath)
-            with open(fullpath) as f:
-                texts.append(f.read())
-    return texts
 
 class VerseGenerator(object):
+
+    Constraint = namedtuple('Constraint', ['index', 'method', 'args'])
 
     def __init__(self, source_text=None):
         '''Build a markov chain from the given source text.'''
@@ -47,7 +40,7 @@ class VerseGenerator(object):
         for sentence in sentences:
             previous = None
             for strng in sentence:
-                current = phonology.Word(strng)
+                current = Word(strng)
                 if current not in self.chain:
                     self.chain[current] = {}
                 if previous:
@@ -108,25 +101,6 @@ class VerseGenerator(object):
             line.append(w)
         return line
 
-    def random_block(self, nwords, nlines):
-        '''Generate a set of random lines.'''
-        block = []
-        while len(block) < nlines:
-            block.append(self.random_line(nwords))
-        return block
-
-    def rhyming_couplet(self, nwords):
-        '''Generate a random rhyming couplet'''
-        # What if the last word of the first line has no CMU data?
-        line1 = self.random_line(nwords)
-        last1 = line1[-1]
-        while True:
-            line2 = self.random_line(nwords)
-            last2 = line2[-1]
-            if last1.rhymeswith(last2) and last1 != last2:
-                break
-        return '\n'.join([' '.join(l) for l in [line1, line2]])
-
     def construct_line(self, length, constraints=[]):
         '''Search the markov chain graph in depth-first order for a
         for a random sequence of words rooted at a randomly selected
@@ -137,6 +111,7 @@ class VerseGenerator(object):
         current = None
 
         while stack and level < length:
+            print(len(stack))
             current = stack.pop()
             level = current[2]
             adj = self.chain[current[0]]
@@ -152,10 +127,33 @@ class VerseGenerator(object):
             for word in succ:
                 stack.append((word, current, level + 1))
 
+        # Walk backwards from final node to build list
         line = []
         for i in range(level):
             line.append(current[0])
             current = current[1]
-
+        line.reverse()
+        
         return line
 
+    def rhyming_couplet(self, nwords, nlines):
+        '''Generate a random rhyming couplet.
+        '''
+        lines = []
+
+        while len(lines) < nlines:
+            print('Couplet loop iter')
+            line_a = self.construct_line(nwords)
+            print('line_a: ', line_a)
+            constraint = (nwords - 1, Word.rhymeswith, line_a[-1])
+            line_b = self.construct_line(nwords, [constraint])
+            lines.extend([line_a, line_b])
+
+        return lines
+
+def testsetup():
+    vg = VerseGenerator()
+    vg.load_corpus(os.getcwd() + '/corpus/')
+    return vg
+        
+        
