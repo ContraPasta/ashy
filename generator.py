@@ -1,5 +1,6 @@
 import os
 import regex
+import codecs
 import random
 from queue import Queue
 from string import punctuation
