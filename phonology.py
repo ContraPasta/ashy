@@ -3,6 +3,32 @@ import itertools
 
 CMU_PATH = 'cmudict.syl'
 
+ARPABET = {
+    'vowels': [
+        # Monophthongs
+        'AO', 'AA', 'IY', 'UW', 'EH', 'IH', 'UH', 'AH', 'AX', 'AE',
+        # Diphthongs
+        'EY', 'AY', 'OW', 'AW', 'OY',
+        # R-coloured vowels. Note the CMU is for American English.
+        # R-coloured vowels only exist in rhotic dialects
+        'ER', 'AXR', 'EHR', 'UHR', 'AOR', 'AAR', 'IHR', 'IYR', 'AWR'
+    ],
+    'consonants': [
+        # Stops
+        'P', 'B', 'T', 'D', 'K', 'G',
+        # Affricates
+        'CH', 'JH',
+        # Fricatives
+        'F', 'V', 'TH', 'DH', 'S', 'Z', 'SH', 'ZH', 'HH',
+        # Nasals
+        'M', 'EM', 'N', 'NG', 'ENG',
+        # Liquids
+        'L', 'EL', 'R', 'DX', 'NX',
+        # Semivowels
+        'Y', 'W', 'Q'
+    ]
+}
+
 def flatten(lst):
     '''Collapse a nested list into a flat list'''
     return list(itertools.chain.from_iterable(lst))
@@ -62,6 +88,17 @@ class Word(str):
             self.syllables = []
             self.phonemes = []
 
+    def _is_comparable(self, word):
+        '''A 'sanity check' for phonemic comparison methods. Checks
+        whether it makes sense to compare this word and the given word.
+        '''
+        if self == word:
+            return False
+        if not self.phonemes or word.phonemes:
+            return False
+
+        return True
+
     def is_stressed(self, syllable):
         '''Determine whether a given syllable is stressed.'''
         return True if ('1' or '2') in ''.join(syllable) else False
@@ -83,10 +120,10 @@ class Word(str):
         '''Returns True if word fits into the given stress pattern.'''
         return pattern == self.stress_pattern()
 
-    def rhymeswith(self, word, exclusive=True):
+    def rhymeswith(self, word):
         '''Returns True if given Word instance rhymes with this one.
         '''
-        if exclusive and self.string == word.string:
+        if not self._is_comparable(word):
             return False
         
         final_phone_sets = []
@@ -100,6 +137,20 @@ class Word(str):
             final_phone_sets.append(w[last_stress_index:])
 
         return identical(final_phone_sets)
+
+    def alliterateswith(self, word, exclusive=True):
+        '''Returns True if given word starts with the same sound as
+        this one. (Special case of consonance)'''
+        if not self._is_comparable(word):
+            return False
+        # If either word doesn't start with a consonant, the words aren't
+        # going to alliterate
+        if self.phonemes[0] not in ARPABET['consonants']:
+            return False
+        if self.phonemes[0] == word.phonemes[0]:
+            return True
+
+        return False
 
     def __repr__(self):
         return u'Word({})'.format(self.string)

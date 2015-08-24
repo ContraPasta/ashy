@@ -1,6 +1,7 @@
 import os
 import regex
 import random
+from queue import Queue
 from string import punctuation
 from collections import Counter, namedtuple
 from phonology import Word
@@ -61,7 +62,8 @@ class VerseGenerator(object):
                     self.load_text(text)
 
     def _select(self, counter):
-        '''Roulette wheel selection from markov chain'''
+        '''Roulette wheel selection from a dict of {item: count}
+        '''
         r = random.random()
         current_sum = 0
         for word, count in counter.items():
@@ -71,16 +73,32 @@ class VerseGenerator(object):
                 return word
         return None
 
+    def _roulette_sort(self, counter):
+        '''Return a list of words in counter, ordered by roulette wheel
+        selection.
+        '''
+        output = []
+        counter_copy = counter.copy()
+
+        while counter_copy:
+            selected = self._select(counter_copy)
+            output.append(selected)
+            del counter_copy[selected]
+
+        return output
+
     def _filter_select(self, counter, method, arg=None):
         '''Like roulette wheel selection, but filters the candidate
         words in `counter` according to the criteria given in 
-        `restrictions` before selection.'''
+        `restrictions` before selection.
+        '''
         filtered = {w: c for w, c in counter.items() if method(w, arg)}
         return self._select(filtered)
 
     def _filter_counter(self, counter, method, *args):
         '''As above but return filtered counter instead of doing the
-        selection.'''
+        selection.
+        '''
         return {w: c for w, c in counter.items() if method(w, *args)}
 
     def _random_word(self):
@@ -101,7 +119,7 @@ class VerseGenerator(object):
             line.append(w)
         return line
 
-    def construct_line(self, length, constraints=[]):
+    def construct_line(self, length, constraints=[], sort='random'):
         '''Search the markov chain graph in depth-first order for a
         for a random sequence of words rooted at a randomly selected
         word, as close to the given length as possible.
@@ -121,9 +139,14 @@ class VerseGenerator(object):
             for con in constraints:
                 if con[0] == level:
                     adj = self._filter_counter(adj, con[1], con[2])
-            
-            succ = [word for word in adj]
-            random.shuffle(succ)
+
+            if sort == 'roulette':
+                succ = self._roulette_sort(adj)
+            else:
+                # Default to random search ordering
+                succ = [w for w in adj]
+                random.shuffle(succ)
+
             for word in succ:
                 stack.append((word, current, level + 1))
 
@@ -137,7 +160,7 @@ class VerseGenerator(object):
         return line
 
     def rhyming_couplet(self, nwords, nlines):
-        '''Generate a random rhyming couplet.
+        '''Generate a verse consisting of random rhyming couplets.
         '''
         lines = []
 
