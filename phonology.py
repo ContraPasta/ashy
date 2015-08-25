@@ -94,7 +94,7 @@ class Word(str):
         '''
         if self == word:
             return False
-        if not self.phonemes or word.phonemes:
+        if not self.phonemes or not word.phonemes:
             return False
 
         return True
@@ -114,7 +114,7 @@ class Word(str):
             else:
                 pattern.append('_')
 
-        return pattern
+        return ''.join(pattern)
 
     def matches_pattern(self, pattern):
         '''Returns True if word fits into the given stress pattern.'''

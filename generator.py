@@ -2,6 +2,7 @@ import os
 import regex
 import codecs
 import random
+import networkx
 from queue import Queue
 from string import punctuation
 from collections import Counter, namedtuple
@@ -25,6 +26,131 @@ def tokenise(text):
         sents.append([strip_punctuation(w.lower()) for w in sent])
     return sents
 
+# This is for storing the constraints that a word must obey to appear
+# at a certain position in the line. `index` should be a position in
+# the line or None, `method` should be a method of the Word class, and
+# `args` the arguments, if any, to that method.
+Filter = namedtuple('Filter', ['index', 'method', 'args'])
+
+
+class XVerseGenerator(object):
+
+    def __init__(self, text=None):
+        self.chain = networkx.DiGraph()
+        if text:
+            self.load_text(text)
+
+    def __getitem__(self, item):
+        return vg.chain[item]
+
+    def load_text(self, text):
+        '''Add the given text to the Markov chain
+        '''
+        for sentence in tokenise(text):
+            previous = None
+            for w in sentence:
+                current = Word(w)
+                if previous:
+                    if (previous, current) not in self.chain:
+                        self.chain.add_edge(previous, current, count=1)
+                    else:
+                        self.chain[previous][current]['count'] += 1
+                previous = current
+
+    def load_corpus(self, folder):
+        '''Load text files in given folder and any subfolders into the
+        markov chain.
+        '''
+        for root, _, fpaths in os.walk(folder):
+            for path in fpaths:
+                fullpath = os.path.join(root, path)
+                with codecs.open(fullpath, 'r', 'utf-8-sig') as f:
+                    text = f.read()
+                    self.load_text(text)
+
+    def roulette_select(self, node, pred=False):
+        '''Pick a node adjacent to given node using roulette wheel
+        selection and return it.
+        node -> node
+        '''
+        r = random.random()
+        current_sum = 0
+        if pred: 
+            adjacent = self.chain.pred[node]
+        else:
+            adjacent = self.chain.succ[node]
+
+        for node, props in adjacent.items():
+            count = props['count']
+            prob = count / len(adjacent)
+            current_sum += prob
+            if r <= current_sum:
+                return node
+
+        return None
+
+    def filter_nodes(self, filters=[]):
+        '''Return list of all graph nodes, filtered by filters'''
+        if not filters:
+            return self.chain.nodes()
+        out = []
+        for node in self.chain.nodes():
+            for f in filters:
+                if f.method(node, *f.args):
+                    out.append(node)
+        return out
+
+    def filter_adjacent(self, node, filters=[], pred=False):
+        '''Filter successor or predecessor nodes nodes for the given
+        node, according to the supplied filters, and return them. 
+        Filters are to be supplied as (method, args) tuples.
+        node -> [node]
+        '''
+        # TODO: Weight proportional ordering
+        try:
+            adj = self.chain.pred[node] if pred else self.chain.succ[node]
+        except KeyError:
+            raise Exception('Tried to operate on empty chain')
+
+        if not filters:
+            return [word for word in adj]
+
+        out = []
+        for word in adj:
+            for f in filters:
+                if f.method(word, *f.args):
+                    out.append(word)
+
+        return out
+
+    def construct_line(self, length, constraints=[], pred=False):
+        '''Search the markov chain graph in depth-first order for a
+        for a random sequence of words rooted at a randomly selected
+        word, as close to the given length as possible.
+        '''
+        level = 0
+        first = (random.choice(self.chain.nodes()), None, level)
+        stack = [first]
+        current = None
+
+        while stack and level < length:
+            current = stack.pop()
+            level = current[2]
+            curr_word = current[0]
+            filters = [f for f in constraints if f.index == level]
+            next_words = self.filter_adjacent(curr_word, filters, pred=pred)
+            random.shuffle(next_words)
+            stack.extend([(w, current, level + 1) for w in next_words])
+
+        line = []
+        for i in range(level):
+            print(current)
+            line.append(current[0])
+            current = current[1]
+        if not pred:
+            line.reverse()
+
+        return line
 
 class VerseGenerator(object):
 
