@@ -99,6 +99,10 @@ class Word(str):
 
         return True
 
+    def noargs_test(self):
+        '''Dummy method to test filter application'''
+        return True
+
     def is_stressed(self, syllable):
         '''Determine whether a given syllable is stressed.'''
         return True if ('1' or '2') in ''.join(syllable) else False
