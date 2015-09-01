@@ -68,6 +68,26 @@ class VerseGenerator(object):
                     text = f.read()
                     self.load_text(text)
 
+    def build_match_list(self, words, comparison_methods):
+
+        match_table = {}
+        iters = 0
+        for method in comparison_methods:
+            match_table[method] = []
+            word_list = list(words)
+            while word_list:
+                iters += 1
+                current = word_list.pop()
+                pruned = []
+                for word in word_list:
+                    if method(current, word):
+                        match_table[method].append(word)
+                    else:
+                        pruned.append(word)
+                word_list = pruned
+        print(iters)
+        return match_table
+
     def roulette_select(self, node, pred=False):
         '''Pick a node adjacent to given node using roulette wheel
         selection and return it.
@@ -75,7 +95,7 @@ class VerseGenerator(object):
         '''
         r = random.random()
         current_sum = 0
-        if pred: 
+        if pred:
             adjacent = self.chain.pred[node]
         else:
             adjacent = self.chain.succ[node]
@@ -109,8 +129,14 @@ class VerseGenerator(object):
         first = (random.choice(self.chain.nodes()), None, level)
         stack = [first]
         current = None
+        iterations = 0
 
         while stack and level < length:
+
+            iterations += 1
+            if iterations > 6500: # 99th percentile in test data...
+                break
+
             current = stack.pop()
             level = current[2]
             curr_word = current[0]
@@ -136,7 +162,7 @@ class VerseGenerator(object):
         while len(lines) < nlines:
             line_a = self.construct_line(nwords)
             constraint = Filter(nwords - 1, Word.rhymeswith, [line_a[-1]])
-            line_b = self.construct_line(nwords, constraint)
+            line_b = self.construct_line(nwords, [constraint])
             lines.extend([line_a, line_b])
 
         return lines
@@ -146,6 +172,6 @@ def testsetup():
     vg.load_corpus(os.getcwd() + '/corpus/')
     return vg
 
+
 def argstest(*args, **kwargs):
     return args, kwargs
-        

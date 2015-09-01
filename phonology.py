@@ -49,7 +49,7 @@ def load_cmu_data(path):
 
     with open(path) as f:
         lines = [line for line in f.readlines() if not line.startswith('#')]
-        
+
         for line in lines:
             word = line.split()[0].lower()
             rest = line[len(word)+1:]
@@ -99,9 +99,8 @@ class Word(str):
 
         return True
 
-    def noargs_test(self):
-        '''Dummy method to test filter application'''
-        return True
+    def has_data(self):
+        return True if self.phonemes else False
 
     def is_stressed(self, syllable):
         '''Determine whether a given syllable is stressed.'''
@@ -129,7 +128,7 @@ class Word(str):
         '''
         if not self._is_comparable(word):
             return False
-        
+
         final_phone_sets = []
         for w in [self.phonemes, word.phonemes]:
             last_stress_index = 0
@@ -161,4 +160,3 @@ class Word(str):
 
     def __str__(self):
         return self.string
-
