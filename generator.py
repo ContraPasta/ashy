@@ -124,6 +124,9 @@ class VerseGenerator(object):
         '''Search the markov chain graph in depth-first order for a
         for a random sequence of words rooted at a randomly selected
         word, as close to the given length as possible.
+
+        It's still as slow as dog shit and doesn't do what I want half
+        the time... definitely room for improvement here
         '''
         level = 0
         first = (random.choice(self.chain.nodes()), None, level)
@@ -165,6 +168,25 @@ class VerseGenerator(object):
             line_b = self.construct_line(nwords, [constraint])
             lines.extend([line_a, line_b])
 
+        return lines
+
+    def lines_for_rhyme_scheme(self, scheme, nwords):
+        '''Generate a poem for the given rhyme scheme. Scheme should be
+        provided as a string like ABAB, ABBAABBACDE, etc.
+        '''
+        rhymes = {}
+        lines = []
+
+        for slot in scheme:
+            if slot not in rhymes:
+                line = self.construct_line(nwords)
+                lines.append(line)
+                rhymes[slot] = line[-1]
+            else:
+                rhymeword = rhymes[slot]
+                f = Filter(nwords - 1, Word.rhymeswith, [rhymeword])
+                line = self.construct_line(nwords, filters=[f])
+                lines.append(line)
         return lines
 
 def testsetup():
