@@ -1,5 +1,5 @@
 import os
-import regex
+import regex # Better unicode support than stdlib re
 import codecs
 import random
 import networkx
@@ -25,6 +25,10 @@ def tokenise(text):
     for sent in [s.split() for s in text.split('.')]:
         sents.append([strip_punctuation(w.lower()) for w in sent])
     return sents
+
+def nltokenise(text):
+    '''Split the text into words and sentences using NLTK's tokenisers.'''
+    pass
 
 # This is for storing the constraints that a word must obey to appear
 # at a certain position in the line. `index` should be a position in
@@ -126,7 +130,9 @@ class VerseGenerator(object):
         word, as close to the given length as possible.
 
         It's still as slow as dog shit and doesn't do what I want half
-        the time... definitely room for improvement here
+        the time... definitely room for improvement here.
+        It needs to fail gracefully - should guaruantee the return of
+        something that is nwords long?5555
         '''
         level = 0
         first = (random.choice(self.chain.nodes()), None, level)
@@ -157,6 +163,39 @@ class VerseGenerator(object):
             line.reverse()
 
         return line
+
+    def t_construct_line(self, nwords, rhyme=None):
+        '''As above, but assume the only filter is going to be for rhyme
+        at the end of the line and so build it backwards.
+        '''
+        level = 0
+        
+        if rhyme:
+            rhymes = [w for w in self.chain.nodes() if w.rhymeswith(rhyme)]
+        else:
+            rhymes = self.chain.nodes()
+            
+        stack = [{'word': random.choice(rhymes), 'prev': None, 'level': level}]
+
+        while stack and level < nwords - 1:
+            this_entry = stack.pop()
+            level = this_entry['level']
+            current = this_entry['word']
+            preds = self.chain.predecessors(current)
+            random.shuffle(preds)
+            
+            for word in preds:
+                entry = {'word': word, 'prev': this_entry, 'level': level + 1}
+                stack.append(entry)
+
+        line = []
+
+        for i in range(nwords):
+            line.append(this_entry['word'])
+            this_entry = this_entry['prev']
+
+        return line
+        
 
     def rhyming_couplets(self, nwords, nlines):
         '''Generate a verse of random rhyming couplets'''

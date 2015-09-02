@@ -1,5 +1,6 @@
 import os
 import itertools
+from nltk.corpus import wordnet
 
 CMU_PATH = 'cmudict.syl'
 
@@ -73,13 +74,11 @@ class Word(str):
     # TODO:
     # Support more levels of stress than just 'stressed' or 'unstressed'
     # Support different levels of rhyme
-    # Method to determine consonance or alliteration with another Word
-    # Possibly, inherit from TextBlob's excellent Word class, with its
-    # lemmatization, Wordnet integration methods
 
-    def __init__(self, strng):
+    def __init__(self, strng, pos_tag=None):
 
         self.string = strng.lower()
+        self.pos_tag = pos_tag
         try:
             self.syllables = CMU_DATA[strng.lower()]
             self.phonemes = flatten(self.syllables)
@@ -154,6 +153,10 @@ class Word(str):
             return True
 
         return False
+
+    def synsets(self):
+        return wordnet.synsets(self.string)
+
 
     def __repr__(self):
         return u'Word({})'.format(self.string)
