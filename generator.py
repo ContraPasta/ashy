@@ -150,8 +150,11 @@ class VerseGenerator(object):
         
         if not first:
             preds = [p[1] for p in predicates if p[0] == 0]
-            first = random.choice(self.filter_words(self.chain.nodes(), preds))
-            
+            try:
+                first = random.choice(self.filter_words(self.chain.nodes(), preds))
+            except IndexError:
+                raise Exception('No word in chain matches given predicate')
+                
         stack = [{'word': first, 'parent': None, 'level': level}]
         
         while stack and level < length:
@@ -171,7 +174,7 @@ class VerseGenerator(object):
                 entry = {'word': succ, 'parent': current_entry, 'level': level}
                 stack.append(entry)
                 
-        print('iterations: {}\npath: {}'.format(iters, current_entry))
+        #print('iterations: {}\npath: {}'.format(iters, current_entry))
         
         line = []
         for i in range(level):
@@ -191,8 +194,11 @@ class VerseGenerator(object):
         slots = length
 
         while slots > 0:
-            line.extend(self.build_word_seq(slots))
+            line.extend(self.build_word_seq(slots, predicates))
             slots = length - len(line)
+            # Adjust predicate indices to compensate
+            predicates = [(i - slots, pred) for i, pred in predicates]
+            print(predicates)
 
         return line
 
@@ -228,7 +234,6 @@ class VerseGenerator(object):
             this_entry = this_entry['prev']
 
         return line
-
 
     def rhyming_couplets(self, nwords, nlines):
         '''Generate a verse of random rhyming couplets'''
