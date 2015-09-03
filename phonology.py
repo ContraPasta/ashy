@@ -154,6 +154,19 @@ class Word(str):
 
         return False
 
+    def assonancewith(self, word, exclusive=True):
+        '''
+        Returns True if both words start with the same vowel sound.
+        '''
+        if not self._is_comparable(word):
+            return False
+        if self.phonemes[0] not in ARPABET['vowels']:
+            return False
+        if self.phonemes[0] == word.phonemes[0]:
+            return True
+
+        return False
+
     def synsets(self):
         return wordnet.synsets(self.string)
 
