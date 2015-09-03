@@ -6,6 +6,7 @@ import networkx
 from queue import Queue
 from string import punctuation
 from collections import Counter, namedtuple
+from functools import partial
 from phonology import Word
 
 def strip_punctuation(s):
@@ -29,6 +30,14 @@ def tokenise(text):
 def nltokenise(text):
     '''Split the text into words and sentences using NLTK's tokenisers.'''
     pass
+
+def reverse(lst):
+    '''
+    Return reversed version of sequence, because they made `reversed
+    an iterator in Python 3 :/
+    '''
+    return [x for x in reversed(lst)]
+
 
 # This is for storing the constraints that a word must obey to appear
 # at a certain position in the line. `index` should be a position in
@@ -112,69 +121,93 @@ class VerseGenerator(object):
                 return node
 
         return None
+    
+    def filter_words(self, words, predicates=[]):
+        '''Filter given list by multiple predicates.
+        '''
+        if not predicates:
+            return words
 
-    def filter_nodes(self, nodes, filters=[]):
-        '''Apply given filters to all nodes in list, return filtered list'''
-        if not filters:
-            return nodes
-        filtered = []
-        for node in nodes:
-            for f in filters:
-                if f.method(node, *f.args):
-                    filtered.append(node)
-        return filtered
+        out = []
+        for word in words:
+            for predicate in predicates:
+                if predicate(word):
+                    out.append(word)
 
-    def construct_line(self, length, filters=[], pred=False):
-        '''Search the markov chain graph in depth-first order for a
-        for a random sequence of words rooted at a randomly selected
-        word, as close to the given length as possible.
+        return out
 
-        It's still as slow as dog shit and doesn't do what I want half
-        the time... definitely room for improvement here.
-        It needs to fail gracefully - should guaruantee the return of
-        something that is nwords long?5555
+    def build_word_seq(self, length, predicates=[], first=None, max_iters=6000):
+        '''
+        Traverse the graph in depth first order to build a sequence
+        of the given length which fits the supplied predicates. If a
+        matching sequence is not found, return partially constructed
+        sequence. Begins with a randomly selected word from the graph
+        
+        predicates - list of (index, partial(Word.method, arg)) tuples
         '''
         level = 0
-        first = (random.choice(self.chain.nodes()), None, level)
-        stack = [first]
-        current = None
-        iterations = 0
-
+        iters = 0
+        
+        if not first:
+            preds = [p[1] for p in predicates if p[0] == 0]
+            first = random.choice(self.filter_words(self.chain.nodes(), preds))
+            
+        stack = [{'word': first, 'parent': None, 'level': level}]
+        
         while stack and level < length:
 
-            iterations += 1
-            if iterations > 6500: # 99th percentile in test data...
+            iters += 1
+            if iters > max_iters:
                 break
 
-            current = stack.pop()
-            level = current[2]
-            curr_word = current[0]
-            level_filters = [f for f in filters if f.index == level]
-            adjacent = self.chain.successors(curr_word)
-            next_words = self.filter_nodes(adjacent, level_filters)
-            random.shuffle(next_words)
-            stack.extend([(w, current, level + 1) for w in next_words])
+            current_entry = stack.pop()
+            level = current_entry['level'] + 1
+            word = current_entry['word']
+            preds = [p[1] for p in predicates if p[0] == level]
+            successors = self.filter_words(self.chain.successors(word), preds)
+            random.shuffle(successors)
 
+            for succ in successors:
+                entry = {'word': succ, 'parent': current_entry, 'level': level}
+                stack.append(entry)
+                
+        print('iterations: {}\npath: {}'.format(iters, current_entry))
+        
         line = []
         for i in range(level):
-            line.append(current[0])
-            current = current[1]
-        if not pred:
-            line.reverse()
+            line.append(current_entry['word'])
+            current_entry = current_entry['parent']
+
+        return reverse(line)
+
+    def build_poem_line(self, length, predicates=[]):
+        '''
+        Wrapper around `build_word_seq`. Calls `build_word_seq` as many
+        times as necessary to fill the line with the correct number of
+        words. This fixes the problem of short lines because the DFS
+        couldn't find a path of the right length.
+        '''
+        line = []
+        slots = length
+
+        while slots > 0:
+            line.extend(self.build_word_seq(slots))
+            slots = length - len(line)
 
         return line
 
-    def t_construct_line(self, nwords, rhyme=None):
-        '''As above, but assume the only filter is going to be for rhyme
+    def t_construct_line(self, nwords, rhyme_word=None):
+        '''As `build_word_seq`, but assume the only filter is going to be for rhyme
         at the end of the line and so build it backwards.
+        TODO: Fold this functionality into `build_word_seq`
         '''
         level = 0
-        
-        if rhyme:
-            rhymes = [w for w in self.chain.nodes() if w.rhymeswith(rhyme)]
+
+        if rhyme_word:
+            rhymes = [w for w in self.chain.nodes() if w.rhymeswith(rhyme_word)]
         else:
             rhymes = self.chain.nodes()
-            
+
         stack = [{'word': random.choice(rhymes), 'prev': None, 'level': level}]
 
         while stack and level < nwords - 1:
@@ -183,7 +216,7 @@ class VerseGenerator(object):
             current = this_entry['word']
             preds = self.chain.predecessors(current)
             random.shuffle(preds)
-            
+
             for word in preds:
                 entry = {'word': word, 'prev': this_entry, 'level': level + 1}
                 stack.append(entry)
@@ -195,7 +228,7 @@ class VerseGenerator(object):
             this_entry = this_entry['prev']
 
         return line
-        
+
 
     def rhyming_couplets(self, nwords, nlines):
         '''Generate a verse of random rhyming couplets'''

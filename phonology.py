@@ -157,7 +157,6 @@ class Word(str):
     def synsets(self):
         return wordnet.synsets(self.string)
 
-
     def __repr__(self):
         return u'Word({})'.format(self.string)
 
