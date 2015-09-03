@@ -235,18 +235,6 @@ class VerseGenerator(object):
 
         return line
 
-    def rhyming_couplets(self, nwords, nlines):
-        '''Generate a verse of random rhyming couplets'''
-        lines = []
-
-        while len(lines) < nlines:
-            line_a = self.construct_line(nwords)
-            constraint = Filter(nwords - 1, Word.rhymeswith, [line_a[-1]])
-            line_b = self.construct_line(nwords, [constraint])
-            lines.extend([line_a, line_b])
-
-        return lines
-
     def lines_for_rhyme_scheme(self, scheme, nwords):
         '''Generate a poem for the given rhyme scheme. Scheme should be
         provided as a string like ABAB, ABBAABBACDE, etc.
@@ -256,13 +244,12 @@ class VerseGenerator(object):
 
         for slot in scheme:
             if slot not in rhymes:
-                line = self.construct_line(nwords)
+                line = self.build_poem_line(nwords)
                 lines.append(line)
                 rhymes[slot] = line[-1]
             else:
-                rhymeword = rhymes[slot]
-                f = Filter(nwords - 1, Word.rhymeswith, [rhymeword])
-                line = self.construct_line(nwords, filters=[f])
+                predicate = (nwords - 1, partial(Word.rhymeswith, rhymes[slot]))
+                line = self.build_poem_line(nwords, [predicate])
                 lines.append(line)
         return lines
 
