@@ -3,7 +3,6 @@ import regex # Better unicode support than stdlib re
 import codecs
 import random
 import networkx
-from queue import Queue
 from string import punctuation
 from collections import Counter, namedtuple
 from functools import partial
@@ -50,6 +49,7 @@ class VerseGenerator(object):
 
     def __init__(self, text=None):
         self.chain = networkx.DiGraph()
+        self.rhyme_table = {}
         if text:
             self.load_text(text)
 
@@ -63,11 +63,25 @@ class VerseGenerator(object):
             previous = None
             for w in sentence:
                 current = Word(w)
+
+                # Add connection between word and previous to the graph
                 if previous:
                     if (previous, current) not in self.chain:
                         self.chain.add_edge(previous, current, count=1)
                     else:
                         self.chain[previous][current]['count'] += 1
+
+                # Check whether graph contains a word that rhymes with this one
+                finals = ''.join(current.final_phone_set())
+                if finals:
+                    if finals not in self.rhyme_table:
+                        self.rhyme_table[finals] = 1
+                    else:
+                        self.rhyme_table[finals] += 1
+
+                    if self.rhyme_table[finals] > 1:
+                        current.set_rhyme_in_collection(True)
+
                 previous = current
 
     def load_corpus(self, folder):
@@ -121,7 +135,7 @@ class VerseGenerator(object):
                 return node
 
         return None
-    
+
     def filter_words(self, words, predicates=[]):
         '''Filter given list by multiple predicates.
         '''
@@ -142,21 +156,21 @@ class VerseGenerator(object):
         of the given length which fits the supplied predicates. If a
         matching sequence is not found, return partially constructed
         sequence. Begins with a randomly selected word from the graph
-        
+
         predicates - list of (index, partial(Word.method, arg)) tuples
         '''
         level = 0
         iters = 0
-        
+
         if not first:
             preds = [p[1] for p in predicates if p[0] == 0]
             try:
                 first = random.choice(self.filter_words(self.chain.nodes(), preds))
             except IndexError:
                 raise Exception('No word in chain matches given predicate')
-                
+
         stack = [{'word': first, 'parent': None, 'level': level}]
-        
+
         while stack and level < length:
 
             iters += 1
@@ -173,9 +187,9 @@ class VerseGenerator(object):
             for succ in successors:
                 entry = {'word': succ, 'parent': current_entry, 'level': level}
                 stack.append(entry)
-                
+
         #print('iterations: {}\npath: {}'.format(iters, current_entry))
-        
+
         line = []
         for i in range(level):
             line.append(current_entry['word'])
@@ -257,7 +271,3 @@ def testsetup():
     vg = VerseGenerator()
     vg.load_corpus(os.getcwd() + '/corpus/')
     return vg
-
-
-def argstest(*args, **kwargs):
-    return args, kwargs
