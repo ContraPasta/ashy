@@ -1,12 +1,11 @@
 import os
+import copy
 import regex # Better unicode support than stdlib re
 import codecs
 import random
 import networkx
-from string import punctuation
-from collections import Counter, namedtuple
-from functools import partial
 from phonology import Word
+from functools import partial
 
 def strip_punctuation(s):
     '''Strip all punctuation characters, including unicode punctuation,
@@ -38,13 +37,6 @@ def reverse(lst):
     return [x for x in reversed(lst)]
 
 
-# This is for storing the constraints that a word must obey to appear
-# at a certain position in the line. `index` should be a position in
-# the line or None, `method` should be a method of the Word class, and
-# `args` the arguments, if any, to that method.
-Filter = namedtuple('Filter', ['index', 'method', 'args'])
-
-
 class VerseGenerator(object):
 
     def __init__(self, text=None):
@@ -64,23 +56,27 @@ class VerseGenerator(object):
             for w in sentence:
                 current = Word(w)
 
+                # Check whether graph contains a word that rhymes with
+                # this one. If it does, mark it. Need to check that it
+                # hasn't been considered already so we don't count the
+                # same word twice.
+                if w not in self.chain:
+                    finals = ''.join(current.final_phone_set())
+                    if finals:
+                        if finals not in self.rhyme_table:
+                            self.rhyme_table[finals] = 1
+                        else:
+                            self.rhyme_table[finals] += 1
+
+                        if self.rhyme_table[finals] > 1:
+                            current.set_rhyme_in_collection(True)
+
                 # Add connection between word and previous to the graph
                 if previous:
                     if (previous, current) not in self.chain:
                         self.chain.add_edge(previous, current, count=1)
                     else:
                         self.chain[previous][current]['count'] += 1
-
-                # Check whether graph contains a word that rhymes with this one
-                finals = ''.join(current.final_phone_set())
-                if finals:
-                    if finals not in self.rhyme_table:
-                        self.rhyme_table[finals] = 1
-                    else:
-                        self.rhyme_table[finals] += 1
-
-                    if self.rhyme_table[finals] > 1:
-                        current.set_rhyme_in_collection(True)
 
                 previous = current
 
@@ -94,26 +90,6 @@ class VerseGenerator(object):
                 with codecs.open(fullpath, 'r', 'utf-8-sig') as f:
                     text = f.read()
                     self.load_text(text)
-
-    def build_match_list(self, words, comparison_methods):
-
-        match_table = {}
-        iters = 0
-        for method in comparison_methods:
-            match_table[method] = []
-            word_list = list(words)
-            while word_list:
-                iters += 1
-                current = word_list.pop()
-                pruned = []
-                for word in word_list:
-                    if method(current, word):
-                        match_table[method].append(word)
-                    else:
-                        pruned.append(word)
-                word_list = pruned
-        print(iters)
-        return match_table
 
     def roulette_select(self, node, pred=False):
         '''Pick a node adjacent to given node using roulette wheel
@@ -166,8 +142,8 @@ class VerseGenerator(object):
             preds = [p[1] for p in predicates if p[0] == 0]
             try:
                 first = random.choice(self.filter_words(self.chain.nodes(), preds))
-            except IndexError:
-                raise Exception('No word in chain matches given predicate')
+            except IndexError as e:
+                raise Exception('No word in chain matches given predicate') from e
 
         stack = [{'word': first, 'parent': None, 'level': level}]
 
@@ -197,22 +173,22 @@ class VerseGenerator(object):
 
         return reverse(line)
 
-    def build_poem_line(self, length, predicates=[]):
+    def build_line(self, length, predicates=[]):
         '''
         Wrapper around `build_word_seq`. Calls `build_word_seq` as many
         times as necessary to fill the line with the correct number of
         words. This fixes the problem of short lines because the DFS
         couldn't find a path of the right length.
         '''
-        line = []
         slots = length
+        line = []
+        offset_preds = copy.copy(predicates)
 
-        while slots > 0:
-            line.extend(self.build_word_seq(slots, predicates))
+        while len(line) < length:
+            seq = self.build_word_seq(slots, offset_preds)
+            line.extend(seq)
             slots = length - len(line)
-            # Adjust predicate indices to compensate
-            predicates = [(i - slots, pred) for i, pred in predicates]
-            print(predicates)
+            offset_preds = [(i - len(line), pred) for i, pred in predicates]
 
         return line
 
@@ -258,12 +234,13 @@ class VerseGenerator(object):
 
         for slot in scheme:
             if slot not in rhymes:
-                line = self.build_poem_line(nwords)
+                predicate = (nwords - 1, Word.has_rhyme_in_collection)
+                line = self.build_line(nwords, [predicate])
                 lines.append(line)
                 rhymes[slot] = line[-1]
             else:
                 predicate = (nwords - 1, partial(Word.rhymeswith, rhymes[slot]))
-                line = self.build_poem_line(nwords, [predicate])
+                line = self.build_line(nwords, [predicate])
                 lines.append(line)
         return lines
 
