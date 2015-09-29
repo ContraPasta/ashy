@@ -140,10 +140,10 @@ class VerseGenerator(object):
 
         if not first:
             preds = [p[1] for p in predicates if p[0] == 0]
-            try:
-                first = random.choice(self.filter_words(self.chain.nodes(), preds))
-            except IndexError as e:
-                raise Exception('No word in chain matches given predicate') from e
+            filtered = self.filter_words(self.chain.nodes(), preds)
+            if not filtered:
+                raise Exception('No words in chain for predicates {}'.format(preds))
+            first = random.choice(filtered)
 
         stack = [{'word': first, 'parent': None, 'level': level}]
 
@@ -164,7 +164,7 @@ class VerseGenerator(object):
                 entry = {'word': succ, 'parent': current_entry, 'level': level}
                 stack.append(entry)
 
-        #print('iterations: {}\npath: {}'.format(iters, current_entry))
+        #print('iterations: {}\npath: {}'o.format(iters, current_entry))
 
         line = []
         for i in range(level):
@@ -172,6 +172,20 @@ class VerseGenerator(object):
             current_entry = current_entry['parent']
 
         return reverse(line)
+
+    def build_sequence(self, length, constraints=[], max_iters=6000):
+
+        level = 0
+        iters = 0
+
+        cs = [c for c in constraints if c['indices'][0] == level]
+        now = [c['predicate'] for c in cs if type(c['predicate']) is partial]
+        later = [c for c in cs if type(c['predicate']) is not partial]
+
+        succ = self.filter_words(self.chain.nodes(), now)
+        first = random.choice(succ)
+        record = {'word': first, 'path': None, 'level': level, 'constraints': []}
+
 
     def build_line(self, length, predicates=[]):
         '''
@@ -225,24 +239,73 @@ class VerseGenerator(object):
 
         return line
 
-    def lines_for_rhyme_scheme(self, scheme, nwords):
+    def random_predicate(self, maxwords):
+        '''
+        Generate a random restriction to apply to a line, for example
+        alliterate two words, internal rhymes, etc. I'll start with
+        simple devices internal to the line.
+        '''
+        index_a = random.randint(0, maxwords - 1)
+        index_b = random.randint(0, maxwords - 1)
+        # Need a way of randomly selecting a comparison method from Word
+        return None
+
+    def lines_to_string(self, lines):
+        '''Convert the output of the different generation methods from
+        lists of Words to strings for display or dispatch to other
+        programmes
+        '''
+        strs = [' '.join(line).capitalize() for line in lines]
+        return '\n'.join(strs)
+
+    def lines_for_rhyme_scheme(self, nwords, scheme, device_thresh=0.4):
+        '''Generate a poem for the given rhyme scheme. Scheme should be
+        provided as a string like ABAB, ABBAABBACDE, etc.
+        '''
+        while True:
+            rhymes = {}
+            lines = []
+
+            for slot in scheme:
+                if slot not in rhymes:
+                    predicate = (nwords - 1, Word.has_rhyme_in_collection)
+                    line = self.build_line(nwords, [predicate])
+                    lines.append(line)
+                    rhymes[slot] = line[-1]
+                else:
+                    predicate = (nwords - 1, partial(Word.rhymeswith, rhymes[slot]))
+                    line = self.build_line(nwords, [predicate])
+                    lines.append(line)
+
+            yield self.lines_to_string(lines)
+
+    def lines_for_rhyme_scheme__(self, nwords, scheme, threshold=0.4):
         '''Generate a poem for the given rhyme scheme. Scheme should be
         provided as a string like ABAB, ABBAABBACDE, etc.
         '''
         rhymes = {}
         lines = []
 
-        for slot in scheme:
-            if slot not in rhymes:
-                predicate = (nwords - 1, Word.has_rhyme_in_collection)
-                line = self.build_line(nwords, [predicate])
+        while True:
+            for slot in scheme:
+                predicates = []
+
+                if slot not in rhymes:
+                    rhyme_p = (nwords - 1, Word.has_rhyme_in_collection)
+                else:
+                    rhyme_p = (nwords - 1, partial(Word.rhymeswith, rhymes[slot]))
+                predicates.append(rhyme_p)
+
+                r = random.random()
+                if r > threshold:
+                    rand_p = self.random_predicate(nwords)
+                    predicates.append(rand_p)
+
+                line = self.build_line(nwords, predicates)
                 lines.append(line)
                 rhymes[slot] = line[-1]
-            else:
-                predicate = (nwords - 1, partial(Word.rhymeswith, rhymes[slot]))
-                line = self.build_line(nwords, [predicate])
-                lines.append(line)
-        return lines
+
+            yield line
 
 def testsetup():
     vg = VerseGenerator()

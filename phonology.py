@@ -11,7 +11,8 @@ ARPABET = {
         # Diphthongs
         'EY', 'AY', 'OW', 'AW', 'OY',
         # R-coloured vowels. Note the CMU is for American English.
-        # R-coloured vowels only exist in rhotic dialects
+        # R-coloured vowels only exist in rhotic dialects such as yank
+        # and canuck
         'ER', 'AXR', 'EHR', 'UHR', 'AOR', 'AAR', 'IHR', 'IYR', 'AWR'
     ],
     'consonants': [
