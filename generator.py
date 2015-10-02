@@ -6,6 +6,7 @@ import random
 import networkx
 from phonology import Word
 from functools import partial
+from collections import namedtuple
 
 def strip_punctuation(s):
     '''Strip all punctuation characters, including unicode punctuation,
@@ -36,6 +37,8 @@ def reverse(lst):
     '''
     return [x for x in reversed(lst)]
 
+Predicate = namedtuple('Predicate', ['partial', 'index'])
+Constraint = namedtuple('Constraint', ['method', 'indices'])
 
 class VerseGenerator(object):
 
@@ -126,6 +129,70 @@ class VerseGenerator(object):
 
         return out
 
+    def build_sequence(self, length, predicates, constraints):
+
+        level = 0
+        stack = []
+
+        # Get candidate starting nodes
+        preds = [p.partial for p in predicates if p.index == level]
+        cands = self.filter_words(self.chain.nodes(), preds)
+        random.shuffle(cands)
+
+        # If there are any multiple-word constraints that begin at
+        # this level, we need to create predicates so they can be
+        # applied at future search levels
+        cs = [c for c in constraints if c.indices[0] == level]
+        for can in cands:
+            new_preds = []
+            for con in cs:
+                curried = partial(con.method, can)
+                sub = con.indices[1:]
+                new_preds.extend([Predicate(curried, i) for i in sub])
+            rec = {'word': can, 'parent': None,
+                   'level': level, 'preds': preds + new_preds}
+            stack.append(rec)
+
+        # Perform a depth first search through the graph to build a line
+        # which satisfies given predicates and multi-word constraints.
+        while stack and level < length:
+
+            path = stack.pop()
+            prev = path['word']
+            level = path['level'] + 1
+            preds = path['preds']
+
+            # Filter nodes following previous word to get candidates for
+            # the next word in the sequence
+            apply = [p.partial for p in preds if p.index == level]
+            cands = self.filter_words(self.chain.successors(prev), apply)
+            random.shuffle(cands) # TODO: Replace with roulette-wheel shuffle
+
+            # If there are any multiple-word constraints that begin at
+            # this level, we need to create predicates so they can be
+            # applied at future search levels
+            cs = [c for c in constraints if c.indices[0] == level]
+            for can in cands:
+                new_preds = []
+                for con in cs:
+                    curried = partial(con.method, can)
+                    sub = con.indices[1:]
+                    new_preds.extend([Predicate(curried, i) for i in sub])
+                rec = {'word': can, 'parent': path,
+                       'level': level, 'preds': preds + new_preds}
+                stack.append(rec)
+
+            print('Level: {}, preds: {}'.format(level, preds))
+
+        # Walk backward through final recursive record to build the
+        # resulting sentence
+        result = []
+        for i in range(level):
+            result.append(path['word'])
+            path = path['parent']
+
+        return reverse(result)
+
     def build_word_seq(self, length, predicates=[], first=None, max_iters=6000):
         '''
         Traverse the graph in depth first order to build a sequence
@@ -172,20 +239,6 @@ class VerseGenerator(object):
             current_entry = current_entry['parent']
 
         return reverse(line)
-
-    def build_sequence(self, length, constraints=[], max_iters=6000):
-
-        level = 0
-        iters = 0
-
-        cs = [c for c in constraints if c['indices'][0] == level]
-        now = [c['predicate'] for c in cs if type(c['predicate']) is partial]
-        later = [c for c in cs if type(c['predicate']) is not partial]
-
-        succ = self.filter_words(self.chain.nodes(), now)
-        first = random.choice(succ)
-        record = {'word': first, 'path': None, 'level': level, 'constraints': []}
-
 
     def build_line(self, length, predicates=[]):
         '''
