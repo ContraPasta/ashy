@@ -115,6 +115,14 @@ class VerseGenerator(object):
 
         return None
 
+    def shuffled_successors(self, node):
+        '''Return the successors for this node, but ordered according
+        to roulette-wheel selection.
+        '''
+        r = random.random()
+        curr_sum = 0
+        raise NotImplementedError
+
     def filter_words(self, words, predicates=[]):
         '''Filter given list by multiple predicates.
         '''
@@ -130,6 +138,23 @@ class VerseGenerator(object):
         return out
 
     def build_sequence(self, length, predicates, constraints):
+
+        # If there are any multiple-word constraints that begin at
+        # this level, we need to create predicates so they can be
+        # applied at future search levels
+        def apply_constraints(word, path, level, preds, cons):
+            cs = [c for c in cons if c.indices[0] == level]
+            out = []
+            for can in cands:
+                new_preds = []
+                for c in cs:
+                    curried = partial(c.method, can)
+                    sub = c.indices[1:]
+                    new_preds.extend([Predicate(curried, i) for i in sub])
+                rec = {'word': can, 'parent': path,
+                       'level': level, 'preds': preds + new_preds}
+                out.append(rec)
+            return out
 
         level = 0
         stack = []
@@ -181,8 +206,6 @@ class VerseGenerator(object):
                 rec = {'word': can, 'parent': path,
                        'level': level, 'preds': preds + new_preds}
                 stack.append(rec)
-
-            print('Level: {}, preds: {}'.format(level, preds))
 
         # Walk backward through final recursive record to build the
         # resulting sentence
