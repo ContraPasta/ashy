@@ -13,6 +13,7 @@ Use:
   `./app --corpus a_folder --scheme aabb --nwords 4`
   The argument to `--corpus` should be a folder containing text files,
   to `--scheme` a rhyme scheme, and to `--nwords` the length of the
-  lines you want to generate.
+  lines you want to generate. I've included the text files I use for
+  testing in the repo, in the corpus folder.
 
 Enjoy

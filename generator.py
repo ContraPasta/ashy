@@ -160,8 +160,8 @@ class VerseGenerator(object):
         stack = []
 
         # Get candidate starting nodes
-        preds = [p.partial for p in predicates if p.index == level]
-        cands = self.filter_words(self.chain.nodes(), preds)
+        apply = [p.partial for p in predicates if p.index == level]
+        cands = self.filter_words(self.chain.nodes(), apply)
         random.shuffle(cands)
 
         # If there are any multiple-word constraints that begin at
@@ -175,7 +175,7 @@ class VerseGenerator(object):
                 sub = con.indices[1:]
                 new_preds.extend([Predicate(curried, i) for i in sub])
             rec = {'word': can, 'parent': None,
-                   'level': level, 'preds': preds + new_preds}
+                   'level': level, 'preds': predicates + new_preds}
             stack.append(rec)
 
         # Perform a depth first search through the graph to build a line
