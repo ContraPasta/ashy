@@ -134,53 +134,36 @@ class VerseGenerator(object):
         of the given length which fits the supplied predicates. If a
         matching sequence is not found, return partially constructed
         sequence. Begins with a randomly selected word from the graph
-
-        predicates - list of (index, partial(Word.method, arg)) tuples
         '''
 
         # If there are any multiple-word constraints that begin at
         # this level, we need to create predicates so they can be
         # applied at future search levels
-        def apply_constraints(word, path, level, preds, cons):
+        def apply_constraints(cands, path, level, preds, cons):
             cs = [c for c in cons if c.indices[0] == level]
-            out = []
+            search_nodes = []
             for can in cands:
                 new_preds = []
-                for c in cs:
-                    curried = partial(c.method, can)
-                    sub = c.indices[1:]
+                for con in cs:
+                    curried = partial(con.method, can)
+                    sub = con.indices[1:]
                     new_preds.extend([Predicate(curried, i) for i in sub])
-                rec = {'word': can, 'parent': path,
-                       'level': level, 'preds': preds + new_preds}
-                out.append(rec)
-            return out
+                rec = {'word': can, 'parent': path, 'level': level,
+                       'preds': preds + new_preds}
+                search_nodes.append(rec)
+            return search_nodes
 
-        level = 0
         stack = []
+        level = 0
 
         # Get candidate starting nodes
         apply = [p.partial for p in predicates if p.index == level]
         cands = self.filter_words(self.chain.nodes(), apply)
         random.shuffle(cands)
+        branches = apply_constraints(cands, None, level, predicates, constraints)
+        stack.extend(branches)
 
-        # If there are any multiple-word constraints that begin at
-        # this level, we need to create predicates so they can be
-        # applied at future search levels
-        cs = [c for c in constraints if c.indices[0] == level]
-        for can in cands:
-            new_preds = []
-            for con in cs:
-                curried = partial(con.method, can)
-                sub = con.indices[1:]
-                new_preds.extend([Predicate(curried, i) for i in sub])
-            rec = {'word': can, 'parent': None,
-                   'level': level, 'preds': predicates + new_preds}
-            stack.append(rec)
-
-        # Perform a depth first search through the graph to build a line
-        # which satisfies given predicates and multi-word constraints.
         while stack and level < length:
-
             path = stack.pop()
             prev = path['word']
             level = path['level'] + 1
@@ -197,19 +180,8 @@ class VerseGenerator(object):
                 raise ValueError('Invalid order argument: {}'.format(order))
             cands = self.filter_words(succ, apply)
 
-            # If there are any multiple-word constraints that begin at
-            # this level, we need to create predicates so they can be
-            # applied at future search levels
-            cs = [c for c in constraints if c.indices[0] == level]
-            for can in cands:
-                new_preds = []
-                for con in cs:
-                    curried = partial(con.method, can)
-                    sub = con.indices[1:]
-                    new_preds.extend([Predicate(curried, i) for i in sub])
-                rec = {'word': can, 'parent': path,
-                       'level': level, 'preds': preds + new_preds}
-                stack.append(rec)
+            branches = apply_constraints(cands, path, level, preds, constraints)
+            stack.extend(branches)
 
         # Walk backward through final recursive record to build the
         # resulting sentence
@@ -286,39 +258,6 @@ class VerseGenerator(object):
 
         return line
 
-    def t_construct_line(self, nwords, rhyme_word=None):
-        '''As `build_word_seq`, but assume the only filter is going to be for rhyme
-        at the end of the line and so build it backwards.
-        TODO: Fold this functionality into `build_word_seq`
-        '''
-        level = 0
-
-        if rhyme_word:
-            rhymes = [w for w in self.chain.nodes() if w.rhymeswith(rhyme_word)]
-        else:
-            rhymes = self.chain.nodes()
-
-        stack = [{'word': random.choice(rhymes), 'prev': None, 'level': level}]
-
-        while stack and level < nwords - 1:
-            this_entry = stack.pop()
-            level = this_entry['level']
-            current = this_entry['word']
-            preds = self.chain.predecessors(current)
-            random.shuffle(preds)
-
-            for word in preds:
-                entry = {'word': word, 'prev': this_entry, 'level': level + 1}
-                stack.append(entry)
-
-        line = []
-
-        for i in range(nwords):
-            line.append(this_entry['word'])
-            this_entry = this_entry['prev']
-
-        return line
-
     def random_predicate(self, maxwords):
         '''
         Generate a random restriction to apply to a line, for example
@@ -358,34 +297,6 @@ class VerseGenerator(object):
                     lines.append(line)
 
             yield self.lines_to_string(lines)
-
-    def lines_for_rhyme_scheme__(self, nwords, scheme, threshold=0.4):
-        '''Generate a poem for the given rhyme scheme. Scheme should be
-        provided as a string like ABAB, ABBAABBACDE, etc.
-        '''
-        rhymes = {}
-        lines = []
-
-        while True:
-            for slot in scheme:
-                predicates = []
-
-                if slot not in rhymes:
-                    rhyme_p = (nwords - 1, Word.has_rhyme_in_collection)
-                else:
-                    rhyme_p = (nwords - 1, partial(Word.rhymeswith, rhymes[slot]))
-                predicates.append(rhyme_p)
-
-                r = random.random()
-                if r > threshold:
-                    rand_p = self.random_predicate(nwords)
-                    predicates.append(rand_p)
-
-                line = self.build_line(nwords, predicates)
-                lines.append(line)
-                rhymes[slot] = line[-1]
-
-            yield line
 
 def testsetup():
     vg = VerseGenerator()
