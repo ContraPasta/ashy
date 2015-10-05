@@ -74,12 +74,13 @@ class VerseGenerator(object):
                         if self.rhyme_table[finals] > 1:
                             current.set_rhyme_in_collection(True)
 
-                # Add connection between word and previous to the graph
+                # Add connection between word and previous to the graph,
+                # or increment the edge counter if it already exists
                 if previous:
-                    if (previous, current) not in self.chain:
-                        self.chain.add_edge(previous, current, count=1)
-                    else:
+                    try:
                         self.chain[previous][current]['count'] += 1
+                    except KeyError:
+                        self.chain.add_edge(previous, current, count=1)
 
                 previous = current
 
@@ -94,10 +95,9 @@ class VerseGenerator(object):
                     text = f.read()
                     self.load_text(text)
 
-    def roulette_select(self, node, pred=False):
-        '''Pick a node adjacent to given node using roulette wheel
-        selection and return it.
-        node -> node
+    def shuffled_adjacent(self, node, pred=False):
+        '''A generator which returns successors or predecessors to the
+        given node in roulette-wheel selected random order.
         '''
         r = random.random()
         current_sum = 0
@@ -111,17 +111,9 @@ class VerseGenerator(object):
             prob = count / len(adjacent)
             current_sum += prob
             if r <= current_sum:
-                return node
+                yield node
 
         return None
-
-    def shuffled_successors(self, node):
-        '''Return the successors for this node, but ordered according
-        to roulette-wheel selection.
-        '''
-        r = random.random()
-        curr_sum = 0
-        raise NotImplementedError
 
     def filter_words(self, words, predicates=[]):
         '''Filter given list by multiple predicates.
@@ -137,7 +129,14 @@ class VerseGenerator(object):
 
         return out
 
-    def build_sequence(self, length, predicates, constraints):
+    def build_sequence(self, length, predicates, constraints, order='roulette'):
+        ''' Traverse the graph in depth first order to build a sequence
+        of the given length which fits the supplied predicates. If a
+        matching sequence is not found, return partially constructed
+        sequence. Begins with a randomly selected word from the graph
+
+        predicates - list of (index, partial(Word.method, arg)) tuples
+        '''
 
         # If there are any multiple-word constraints that begin at
         # this level, we need to create predicates so they can be
@@ -190,8 +189,13 @@ class VerseGenerator(object):
             # Filter nodes following previous word to get candidates for
             # the next word in the sequence
             apply = [p.partial for p in preds if p.index == level]
-            cands = self.filter_words(self.chain.successors(prev), apply)
-            random.shuffle(cands) # TODO: Replace with roulette-wheel shuffle
+            if order is 'roulette':
+                succ = self.shuffled_adjacent(prev)
+            elif order is 'random':
+                succ = self.chain.successors(prev)
+            else:
+                raise ValueError('Invalid order argument: {}'.format(order))
+            cands = self.filter_words(succ, apply)
 
             # If there are any multiple-word constraints that begin at
             # this level, we need to create predicates so they can be
