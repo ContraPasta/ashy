@@ -2,6 +2,7 @@ import os
 import copy
 import regex # Better unicode support than stdlib re
 import codecs
+import pickle
 import random
 import networkx
 from phonology import Word
@@ -92,8 +93,26 @@ class VerseGenerator(object):
             for path in fpaths:
                 fullpath = os.path.join(root, path)
                 with codecs.open(fullpath, 'r', 'utf-8-sig') as f:
-                    text = f.read()
-                    self.load_text(text)
+                    try:
+                        text = f.read()
+                        self.load_text(text)
+                    except UnicodeDecodeError as e:
+                        msg = '{} is not utf-8'.format(fullpath)
+                        raise IOError(msg) from e
+
+    def dump_chain(self, path):
+        '''
+        Serialize the markov chain digraph to a file
+        '''
+        with open(path, 'wb') as f:
+            pickle.dump(self.chain, f)
+
+    def load_chain(self, path):
+        '''
+        Load a pickled markov chain. Wipes any existing data
+        '''
+        with open(path, 'rb') as f:
+            self.chain = pickle.load(f)
 
     def shuffled_adjacent(self, node, pred=False):
         '''A generator which returns successors or predecessors to the
@@ -120,13 +139,11 @@ class VerseGenerator(object):
         '''
         if not predicates:
             return words
-
         out = []
         for word in words:
             for predicate in predicates:
                 if predicate(word):
                     out.append(word)
-
         return out
 
     def build_sequence(self, length, predicates, constraints, order='roulette'):
@@ -258,16 +275,12 @@ class VerseGenerator(object):
 
         return line
 
-    def random_predicate(self, maxwords):
+    def random_constraint(self, seq_len):
         '''
-        Generate a random restriction to apply to a line, for example
-        alliterate two words, internal rhymes, etc. I'll start with
-        simple devices internal to the line.
+        Generate a random multi-word constraint to apply to a sequence
+        generation.
         '''
-        index_a = random.randint(0, maxwords - 1)
-        index_b = random.randint(0, maxwords - 1)
-        # Need a way of randomly selecting a comparison method from Word
-        return None
+        raise NotImplementedError
 
     def lines_to_string(self, lines):
         '''Convert the output of the different generation methods from
@@ -298,7 +311,7 @@ class VerseGenerator(object):
 
             yield self.lines_to_string(lines)
 
-def testsetup():
+def testsetup(folder):
     vg = VerseGenerator()
-    vg.load_corpus(os.getcwd() + '/corpus/')
+    vg.load_corpus(os.getcwd() + folder)
     return vg

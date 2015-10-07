@@ -1,16 +1,15 @@
-Markov chain based procedural poetry generator
-----------------------------------------------
+*Markov chain based procedural poetry generator*
 
-# Installation:
+*Installation:*
 
   1. If you don't have it, install Python 3 using your system's package
      manager. OS X - `brew install python3`
   2. Clone the repository into a folder on your computer.
   3. Install the required packages - `pip3 install -r requirements.txt`
 
-# Use:
+*Use:*
 
-
+  (instructions on VerseGenerator, Predicates, Constraints go here)
 
   I've included a crude command-line application which you can use to
   generate lines according to a rhyme scheme and print them to the
