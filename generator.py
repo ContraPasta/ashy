@@ -114,8 +114,9 @@ class VerseGenerator(object):
         with open(path, 'rb') as f:
             self.chain = pickle.load(f)
 
-    def shuffled_adjacent(self, node, pred=False):
-        '''A generator which returns successors or predecessors to the
+    def roulette_select(self, node, pred=False):
+        '''
+        A generator which returns successors or predecessors to the
         given node in roulette-wheel selected random order.
         '''
         r = random.random()
@@ -130,9 +131,18 @@ class VerseGenerator(object):
             prob = count / len(adjacent)
             current_sum += prob
             if r <= current_sum:
-                yield node
+                return node
 
         return None
+
+    def shuffled_successors(self, word):
+        '''
+        Return successor words for given word in random order
+        proportional to their frequency.
+        '''
+        succ = self.chain.succ[word].items()
+        key = lambda kv: random.expovariate(1/0.5) * kv[1]['count']
+        return [pair[0] for pair in sorted(succ, key=key)]
 
     def filter_words(self, words, predicates=[]):
         '''Filter given list by multiple predicates.
@@ -187,12 +197,14 @@ class VerseGenerator(object):
             preds = path['preds']
 
             # Filter nodes following previous word to get candidates for
-            # the next word in the sequence
+            # the next word in the sequence. TODO: put order selection code
+            # into the shuffled_successors method
             apply = [p.partial for p in preds if p.index == level]
             if order is 'roulette':
-                succ = self.shuffled_adjacent(prev)
+                succ = self.shuffled_successors(prev)
             elif order is 'random':
                 succ = self.chain.successors(prev)
+                random.shuffle(succ)
             else:
                 raise ValueError('Invalid order argument: {}'.format(order))
             cands = self.filter_words(succ, apply)
