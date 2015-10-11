@@ -69,7 +69,7 @@ def load_cmu_data(path):
 CMU_DATA = load_cmu_data(CMU_PATH)
 
 
-class Word(str):
+class Word:
     '''Represents an English word in the rhyming dictionary'''
 
     # TODO:
@@ -83,12 +83,24 @@ class Word(str):
         try:
             self.syllables = CMU_DATA[strng.lower()]
             self.phonemes = flatten(self.syllables)
+            # Need a hashable version of the CMU data for each word
+            self.syl_string = ''.join(self.phonemes)
         # Word has no pronounciation information in dictionary used
         except KeyError:
             self.syllables = []
             self.phonemes = []
+            self.syl_string = None
 
         self.collection_has_rhyme = False
+
+    def __key(self):
+        return (self.string, self.pos_tag, self.syl_string)
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.__key() == other.__key()
+
+    def __hash__(self):
+        return hash(self.__key())
 
     def _is_comparable(self, word):
         '''A 'sanity check' for phonemic comparison methods. Checks
