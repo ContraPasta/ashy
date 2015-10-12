@@ -69,7 +69,7 @@ def load_cmu_data(path):
 CMU_DATA = load_cmu_data(CMU_PATH)
 
 
-class Word:
+class Word(object):
     '''Represents an English word in the rhyming dictionary'''
 
     # TODO:
@@ -115,6 +115,9 @@ class Word:
 
     def has_data(self):
         return True if self.phonemes else False
+
+    def has_pos_tag(self, tag):
+        return self.pos_tag == tag
 
     def is_stressed(self, syllable):
         '''Determine whether a given syllable is stressed.'''
@@ -191,7 +194,7 @@ class Word:
         return wordnet.synsets(self.string)
 
     def __repr__(self):
-        return u'Word({})'.format(self.string)
+        return u'Word({}, {})'.format(self.string, self.pos_tag)
 
     def __str__(self):
         return self.string

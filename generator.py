@@ -5,9 +5,12 @@ import codecs
 import pickle
 import random
 import networkx
+from nltk import pos_tag
 from phonology import Word
 from functools import partial
 from collections import namedtuple
+
+TAGSET = 'universal'
 
 def strip_punctuation(s):
     '''Strip all punctuation characters, including unicode punctuation,
@@ -56,15 +59,16 @@ class VerseGenerator(object):
         '''Add the given text to the Markov chain
         '''
         for sentence in tokenise(text):
+            tagged = pos_tag(sentence, tagset=TAGSET)
             previous = None
-            for w in sentence:
-                current = Word(w)
+            for w, tag in tagged:
+                current = Word(w, tag)
 
                 # Check whether graph contains a word that rhymes with
                 # this one. If it does, mark it. Need to check that it
                 # hasn't been considered already so we don't count the
                 # same word twice.
-                if w not in self.chain:
+                if current not in self.chain:
                     finals = ''.join(current.final_phone_set())
                     if finals:
                         if finals not in self.rhyme_table:
