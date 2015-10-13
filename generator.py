@@ -139,14 +139,21 @@ class VerseGenerator(object):
 
         return None
 
-    def shuffled_successors(self, word):
+    def shuffled_successors(self, word, order='roulette'):
         '''
         Return successor words for given word in random order
         proportional to their frequency.
         '''
-        succ = self.chain.succ[word].items()
-        key = lambda kv: random.expovariate(1/0.5) * kv[1]['count']
-        return [pair[0] for pair in sorted(succ, key=key)]
+        if order is 'roulette':
+            succ = self.chain.succ[word].items()
+            key = lambda kv: random.expovariate(1/0.5) * kv[1]['count']
+            return [pair[0] for pair in sorted(succ, key=key)]
+        elif order is 'random':
+            succ = self.chain.successors(word)
+            random.shuffle(succ)
+            return succ
+        else:
+            raise ValueError('Invalid order option: {}'.format(order))
 
     def filter_words(self, words, predicates=[]):
         '''Filter given list by multiple predicates.
@@ -204,13 +211,7 @@ class VerseGenerator(object):
             # the next word in the sequence. TODO: put order selection code
             # into the shuffled_successors method
             apply = [p.partial for p in preds if p.index == level]
-            if order is 'roulette':
-                succ = self.shuffled_successors(prev)
-            elif order is 'random':
-                succ = self.chain.successors(prev)
-                random.shuffle(succ)
-            else:
-                raise ValueError('Invalid order argument: {}'.format(order))
+            succ = self.shuffled_successors(word, order=order)
             cands = self.filter_words(succ, apply)
 
             branches = apply_constraints(cands, path, level, preds, constraints)
@@ -224,72 +225,6 @@ class VerseGenerator(object):
             path = path['parent']
 
         return reverse(result)
-
-    def build_word_seq(self, length, predicates=[], first=None, max_iters=6000):
-        '''
-        Traverse the graph in depth first order to build a sequence
-        of the given length which fits the supplied predicates. If a
-        matching sequence is not found, return partially constructed
-        sequence. Begins with a randomly selected word from the graph
-
-        predicates - list of (index, partial(Word.method, arg)) tuples
-        '''
-        level = 0
-        iters = 0
-
-        if not first:
-            preds = [p[1] for p in predicates if p[0] == 0]
-            filtered = self.filter_words(self.chain.nodes(), preds)
-            if not filtered:
-                raise Exception('No words in chain for predicates {}'.format(preds))
-            first = random.choice(filtered)
-
-        stack = [{'word': first, 'parent': None, 'level': level}]
-
-        while stack and level < length:
-
-            iters += 1
-            if iters > max_iters:
-                break
-
-            current_entry = stack.pop()
-            level = current_entry['level'] + 1
-            word = current_entry['word']
-            preds = [p[1] for p in predicates if p[0] == level]
-            successors = self.filter_words(self.chain.successors(word), preds)
-            random.shuffle(successors)
-
-            for succ in successors:
-                entry = {'word': succ, 'parent': current_entry, 'level': level}
-                stack.append(entry)
-
-        #print('iterations: {}\npath: {}'o.format(iters, current_entry))
-
-        line = []
-        for i in range(level):
-            line.append(current_entry['word'])
-            current_entry = current_entry['parent']
-
-        return reverse(line)
-
-    def build_line(self, length, predicates=[]):
-        '''
-        Wrapper around `build_word_seq`. Calls `build_word_seq` as many
-        times as necessary to fill the line with the correct number of
-        words. This fixes the problem of short lines because the DFS
-        couldn't find a path of the right length.
-        '''
-        slots = length
-        line = []
-        offset_preds = copy.copy(predicates)
-
-        while len(line) < length:
-            seq = self.build_word_seq(slots, offset_preds)
-            line.extend(seq)
-            slots = length - len(line)
-            offset_preds = [(i - len(line), pred) for i, pred in predicates]
-
-        return line
 
     def random_constraint(self, seq_len):
         '''
@@ -305,27 +240,6 @@ class VerseGenerator(object):
         '''
         strs = [' '.join(line).capitalize() for line in lines]
         return '\n'.join(strs)
-
-    def lines_for_rhyme_scheme(self, nwords, scheme, device_thresh=0.4):
-        '''Generate a poem for the given rhyme scheme. Scheme should be
-        provided as a string like ABAB, ABBAABBACDE, etc.
-        '''
-        while True:
-            rhymes = {}
-            lines = []
-
-            for slot in scheme:
-                if slot not in rhymes:
-                    predicate = (nwords - 1, Word.has_rhyme_in_collection)
-                    line = self.build_line(nwords, [predicate])
-                    lines.append(line)
-                    rhymes[slot] = line[-1]
-                else:
-                    predicate = (nwords - 1, partial(Word.rhymeswith, rhymes[slot]))
-                    line = self.build_line(nwords, [predicate])
-                    lines.append(line)
-
-            yield self.lines_to_string(lines)
 
 def testsetup(folder):
     vg = VerseGenerator()
