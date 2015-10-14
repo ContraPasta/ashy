@@ -53,7 +53,7 @@ class VerseGenerator(object):
             self.load_text(text)
 
     def __getitem__(self, item):
-        return vg.chain[item]
+        return self.chain[item]
 
     def load_text(self, text):
         '''Add the given text to the Markov chain
@@ -231,14 +231,6 @@ class VerseGenerator(object):
         generation.
         '''
         raise NotImplementedError
-
-    def lines_to_string(self, lines):
-        '''Convert the output of the different generation methods from
-        lists of Words to strings for display or dispatch to other
-        programmes
-        '''
-        strs = [' '.join(line).capitalize() for line in lines]
-        return '\n'.join(strs)
 
 def testsetup(folder):
     vg = VerseGenerator()
