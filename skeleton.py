@@ -7,9 +7,6 @@ from functools import partial
 from phonology import Word
 from generator import Predicate, Constraint
 
-class ParseError(Exception):
-    pass
-
 tokens = [
     'OPERATOR',
     'IDENTIFIER',
@@ -19,11 +16,21 @@ tokens = [
 ]
 
 t_OPERATOR   = r'[a-z]+'
-t_IDENTIFIER = r'\d+'
 t_LBRACKET   = r'\['
 t_RBRACKET   = r'\]'
 t_EMPTY      = r'_'
 t_ignore     = ' \t'
+
+# Convert identifier number strings to ints
+def t_IDENTIFIER(t):
+    r'\d+'
+    t.value = int(t.value)
+    return t
+
+# Track line numbers
+def t_newline(t):
+    r'\n+'
+    t.lexer.lineno += len(t.value)
 
 def t_error(t):
     print('Illegal character {}'.format(t.value[0]))
@@ -33,12 +40,13 @@ lexer = lex.lex()
 
 operator_for_token = {
     'al': Word.alliterateswith,
-    'rh': Word.rhymeswith
+    'rh': Word.rhymeswith,
+
 }
 
 def parse(lexer):
     constraints = {}
-    word_index = 0
+    word_index = -1
     while True:
         token = lexer.token()
         if not token: # End of input
@@ -60,5 +68,5 @@ def parse(lexer):
                     constraints[(token.value, id)] = Constraint(op, [word_index])
                 token = lexer.token()
         else:
-            raise ParseError('Unrecognised token: {}'.format(token))
-    return list(constraints.values())
+            raise SyntaxError('Unrecognised token: {}'.format(token))
+    return (word_index + 1, list(constraints.values()))

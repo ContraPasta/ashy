@@ -208,10 +208,9 @@ class VerseGenerator(object):
             preds = path['preds']
 
             # Filter nodes following previous word to get candidates for
-            # the next word in the sequence. TODO: put order selection code
-            # into the shuffled_successors method
+            # the next word in the sequence.
             apply = [p.partial for p in preds if p.index == level]
-            succ = self.shuffled_successors(word, order=order)
+            succ = self.shuffled_successors(prev, order=order)
             cands = self.filter_words(succ, apply)
 
             branches = apply_constraints(cands, path, level, preds, constraints)
