@@ -1,14 +1,13 @@
 import os
-import copy
 import regex # Better unicode support than stdlib re
 import codecs
 import pickle
 import random
-import networkx
+from networkx import DiGraph, single_source_shortest_path_length
 from nltk import pos_tag
 from phonology import Word
 from functools import partial
-from collections import namedtuple
+from collections import namedtuple, deque
 
 TAGSET = 'universal'
 
@@ -46,7 +45,8 @@ Constraint = namedtuple('Constraint', ['method', 'indices'])
 
 class VerseGenerator(object):
 
-    def __init__(self, text=None):
+    def __init__(self, text=None, pos_tags=True):
+        self.pos_tags = pos_tags
         self.chain = networkx.DiGraph()
         self.rhyme_table = {}
         if text:
@@ -59,7 +59,11 @@ class VerseGenerator(object):
         '''Add the given text to the Markov chain
         '''
         for sentence in tokenise(text):
-            tagged = pos_tag(sentence, tagset=TAGSET)
+            if self.pos_tags:
+                tagged = pos_tag(sentence, tagset=TAGSET)
+            else:
+                tagged = ((w, None) for w in sentence)
+
             previous = None
             for w, tag in tagged:
                 current = Word(w, tag)
@@ -225,6 +229,22 @@ class VerseGenerator(object):
 
         return reverse(result)
 
+    def rhymes_for_word(self, word):
+        '''
+        Search the graph for all words that rhyme with given word at all
+        distances up to the maximum distance specified, and return them
+        in a dict.
+        '''
+        nodes = single_source_shortest_path_length(self.chain, word)
+        table = {}
+        for node, level in nodes.items():
+            if word.rhymeswith(node):
+                try:
+                    table[level].add(node)
+                except KeyError:
+                    table[level] = {node}
+        return table
+
     def random_constraint(self, seq_len):
         '''
         Generate a random multi-word constraint to apply to a sequence
@@ -232,7 +252,7 @@ class VerseGenerator(object):
         '''
         raise NotImplementedError
 
-def testsetup(folder):
-    vg = VerseGenerator()
+def testsetup(folder, tags=True):
+    vg = VerseGenerator(pos_tags=tags)
     vg.load_corpus(os.getcwd() + folder)
     return vg

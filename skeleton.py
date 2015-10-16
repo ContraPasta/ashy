@@ -70,3 +70,9 @@ def parse(lexer):
         else:
             raise SyntaxError('Unrecognised token: {}'.format(token))
     return (word_index + 1, list(constraints.values()))
+
+def line_from_skeleton(gen, line):
+    lexer.input(line)
+    i, cs = parse(lexer)
+    seq = map(str, gen.build_sequence(i, [], cs))
+    return ' '.join(seq)
