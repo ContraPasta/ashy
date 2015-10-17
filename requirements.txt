@@ -1,0 +1,4 @@
+networkx == 1.10
+nltk == 3.0.5
+ply == 3.8
+regex == 2015.10.5

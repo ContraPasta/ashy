@@ -45,10 +45,10 @@ Constraint = namedtuple('Constraint', ['method', 'indices'])
 
 class VerseGenerator(object):
 
-    def __init__(self, text=None, pos_tags=True):
+    def __init__(self, text=None, pos_tags=True, rhyme_table=True):
         self.pos_tags = pos_tags
         self.chain = networkx.DiGraph()
-        self.rhyme_table = {}
+        self.rhymes = {}
         if text:
             self.load_text(text)
 
@@ -68,21 +68,6 @@ class VerseGenerator(object):
             for w, tag in tagged:
                 current = Word(w, tag)
 
-                # Check whether graph contains a word that rhymes with
-                # this one. If it does, mark it. Need to check that it
-                # hasn't been considered already so we don't count the
-                # same word twice.
-                if current not in self.chain:
-                    finals = ''.join(current.final_phone_set())
-                    if finals:
-                        if finals not in self.rhyme_table:
-                            self.rhyme_table[finals] = 1
-                        else:
-                            self.rhyme_table[finals] += 1
-
-                        if self.rhyme_table[finals] > 1:
-                            current.set_rhyme_in_collection(True)
-
                 # Add connection between word and previous to the graph,
                 # or increment the edge counter if it already exists
                 if previous:
@@ -92,6 +77,10 @@ class VerseGenerator(object):
                         self.chain.add_edge(previous, current, count=1)
 
                 previous = current
+
+        if self.rhyme_table:
+            rhymes = {w: self.rhymes_for_word(w) for w in self.chain.nodes()}
+            self.rhymes = rhymes
 
     def load_corpus(self, folder):
         '''Load text files in given folder and any subfolders into the
