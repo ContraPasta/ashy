@@ -1,8 +1,9 @@
 import os
+from pkg_resources import resource_filename
 import itertools
 from nltk.corpus import wordnet
 
-CMU_PATH = 'cmudict.syl'
+CMU_PATH = resource_filename(__name__, os.path.join('data', 'cmudict.syl'))
 
 ARPABET = {
     'vowels': [

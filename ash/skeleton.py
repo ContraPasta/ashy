@@ -1,11 +1,15 @@
 '''
 Parser for a little "language" for specifying the form of randomly
-generated poems
+generated poems. For example:
+A rhyming couplet -
+___[rh1]
+___[rh1]
 '''
 import ply.lex as lex
 from functools import partial
-from phonology import Word
-from generator import Predicate, Constraint
+
+from .phonology import Word
+from .generator import Predicate, Constraint
 
 tokens = [
     'OPERATOR',

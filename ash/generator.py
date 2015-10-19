@@ -5,9 +5,10 @@ import pickle
 import random
 from networkx import DiGraph, single_source_shortest_path_length
 from nltk import pos_tag
-from phonology import Word
 from functools import partial
-from collections import namedtuple, deque
+from collections import namedtuple
+
+from .phonology import Word
 
 TAGSET = 'universal'
 
@@ -47,7 +48,7 @@ class VerseGenerator(object):
 
     def __init__(self, text=None, pos_tags=True, rhyme_table=True):
         self.pos_tags = pos_tags
-        self.chain = networkx.DiGraph()
+        self.chain = DiGraph()
         self.rhymes = {}
         if text:
             self.load_text(text)
