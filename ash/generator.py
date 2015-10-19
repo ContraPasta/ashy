@@ -47,6 +47,7 @@ Constraint = namedtuple('Constraint', ['method', 'indices'])
 class VerseGenerator(object):
 
     def __init__(self, text=None, pos_tags=True, rhyme_table=True):
+        self.rhyme_table = rhyme_table
         self.pos_tags = pos_tags
         self.chain = DiGraph()
         self.rhymes = {}
