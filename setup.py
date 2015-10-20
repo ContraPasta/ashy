@@ -10,6 +10,7 @@ setup (
     author_email='isaac.stead@protonmail.com',
     url='https://github.com/isaac-rks/ash',
     packages=['ash'],
+    package_data={'ash': ['data/cmudict.syl']},
     install_requires=[
         'networkx',
         'nltk',
