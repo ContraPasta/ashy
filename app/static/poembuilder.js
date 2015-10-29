@@ -68,13 +68,22 @@ $(document).ready(function () {
 
     // Bind event handlers for word control menu options
     $('#ui-spec').on('click', '.dropdown  #word-rhyme', function (event) {
-	console.log('rhyme clicked');
 	uiState = 'word_select';
 	$('.dropdown-toggle').unbind();
 	var parentButton = $(this).closest('.dropdown-menu').prev();
 	var wordID = parentButton.attr('id');
 	selectedWordID = wordID;
 	selectedDevice = 'rhyme';
+	parentButton.text('Done');
+    });
+
+    $('#ui-spec').on('click', '.dropdown' '#word-alliterate', function (event) {
+	uiState = 'word_select';
+	$('.dropdown-toggle').unbind();
+	var parentButton = $(this).closest('.dropdown-menu').prev();
+	var wordID = parentButton.attr('id');
+	selectedWordID = wordID;
+	selectedDevice = 'alliteration';
 	parentButton.text('Done');
     });
 
