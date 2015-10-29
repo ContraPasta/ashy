@@ -1,4 +1,4 @@
-from flask import Flask, render_template, session
+from flask import Flask, render_template, session, request
 from ash.generator import VerseGenerator, Predicate, Constraint
 
 app = Flask(__name__)
@@ -24,13 +24,15 @@ def add_text():
     Should be called when the "Add text" button is click. Gets the current
     contents of the text box and adds it to the VerseGenerator instance.
     '''
-    return None
+    return 'Not implemented'
 
-@app.route('/newpoem')
+@app.route('/generate', methods=['GET', 'POST'])
 def generate_poem():
     '''
     This should be run when the "Generate poem" button is clicked.
     It should get the current Predicates and Constraints specified by
     the user, and call `VerseGenerator.build_sequence`.
     '''
-    return 'Not implemented yet :^('
+    poem_data = request.get_json(force=True)
+    print(poem_data)
+    return 'poem posted'
