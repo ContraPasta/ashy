@@ -1,28 +1,47 @@
 $(document).ready(function () {
-    var wordBox = '<div class="wordbox" id="w?">Word</div>';
-    var lineBox = '<div class="linebox"id="l?"></div>';
-    var nlines = 1;
+    var uiState = 'normal';
+    // Load HTML for word control from server
+    var wordUiElement;
+    $.get('/static/word_ui_element.html', function (data) {
+	wordUiElement = data;
+    });
+    var nwords = 0;
+    var testClickCounter = 0;
 
-    function newLine() {
-	var linediv = lineBox.replace('?', nlines.toString());
-	nlines++;
-	return linediv;
-    }
+     // Make it so dropdowns are exclusively controlled via JavaScript
+    $(document).off('.dropdown.data-api')
 
-    $('#add').click(function(){
-	$('#1').append(wordBox);
+    $('#ui-add-word').click(function (event) {
+	var control = wordUiElement.replace(/wx/g, 'w' + nwords.toString());
+	$('#ui-spec').append(control);
+	nwords++;
     });
 
-    $('#newline').click(function(){
-	$('#spec').append(newLine());
-	nlines ++;
+    $('#ui-change-state').click(function (event) {
+	if (uiState === 'word_select') {
+	    uiState = 'normal';
+	} else {
+	    uiState = 'word_select';
+	    // Switch off event handlers on the dropdowns to prevent the
+	    // bootstrap event interfering with custom event
+	}
     });
 
-    /* Need to perform the event binding inside document ready
-       handler so I can attach events to elements created after
-       the page loads
-    */
-    $(document).on('click', '.wordbox', function(){
-	alert('wordbox clicked');
+    // NB: When binding to elements that are created dynamically you need to
+    // use jQuery.fn.on on an ancestor element that exists at the time the
+    // event is bound.
+    $('#ui-spec').on('click', '.dropdown .dropdown-toggle', function () {
+	if (uiState === 'normal') {
+	    $(this).dropdown('toggle');
+	    // Switch off event handlers on the dropdowns to prevent the
+	    // bootstrap event interfering with custom event.
+	    $('.dropdown-toggle').unbind();
+	}
+	else {
+	    testClickCounter ++;
+	    console.log('testclick incremented');
+	}
     });
+
+
 });
