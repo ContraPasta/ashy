@@ -1,5 +1,6 @@
 from flask import Flask, render_template, session, request
 from ash.generator import VerseGenerator, Predicate, Constraint
+from ash.phonology import Word
 
 app = Flask(__name__)
 
@@ -12,6 +13,18 @@ app.config.update(dict(
 #app.config.from_envvar('ASH_APP_SETTINGS', silent=False)
 
 vg = VerseGenerator('the quick brown fox jumped over the lazy dog')
+
+def convert_json(data):
+    '''
+    Convert a JSON object sent from the UI to a set of predicates and
+    constraints to be applied to poem generation.
+    '''
+    constraints = []
+    for feature, indices in data.items():
+        method = getattr(Word, feature)
+        constraints.append(Constraint(method, indices))
+
+    return constraints
 
 @app.route('/')
 def show_index():
@@ -35,4 +48,6 @@ def generate_poem():
     '''
     poem_data = request.get_json(force=True)
     print(poem_data)
-    return 'poem posted'
+    constraints = convert_json(poem_data)
+    poem_text = vg.build_sequence(8, [], constraints)
+    return ' '.join([str(w) for w in poem_text])

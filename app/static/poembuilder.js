@@ -19,25 +19,23 @@ $(document).ready(function () {
     $(document).off('.dropdown.data-api')
 
     $('#ui-add-word').click(function (event) {
-        var control = wordUiElement.replace(/wx/g, 'w' + nwords.toString());
+	// Use JQuery instead of text substitution
+        var control = wordUiElement.replace(/@/g, nwords.toString());
         $('#ui-spec').append(control);
         nwords++;
     });
 
     $('#ui-clear-words').click(function (event) {
         $('#ui-spec').empty();
-    });
-
-    $('#ui-change-state').click(function (event) {
-        if (uiState === 'word_select') {
-            uiState = 'normal';
-        } else {
-            uiState = 'word_select';
-        }
+	poemData = {};
+	nWords = 0;
     });
 
     $('#ui-generate-poem').click(function (event) {
-        $.post('/generate', JSON.stringify(poemData), null, 'application/json');
+
+        $.post('/generate', JSON.stringify(poemData), function (poem) {
+	    $('#ui-text').text(poem);
+	});
     });
 
     // NB: When binding to elements that are created dynamically you need to
@@ -52,6 +50,7 @@ $(document).ready(function () {
         }
         else {
             var id = $(this).attr('id');
+	    var wordIndex = parseInt($(this).attr('word-index'), 10);
             if ( id === selectedWordID ) {
                 uiState = 'normal';
                 $(this).dropdown('toggle');
@@ -59,12 +58,12 @@ $(document).ready(function () {
             }
             else {
                 if ( selectedDevice in poemData ) {
-                    if ( poemData[selectedDevice].indexOf(id) < 0 ) {
-                        poemData[selectedDevice].push(id);
+                    if ( poemData[selectedDevice].indexOf(wordIndex) < 0 ) {
+                        poemData[selectedDevice].push(wordIndex);
                     }
                 }
                 else {
-                    poemData[selectedDevice] = [id];
+                    poemData[selectedDevice] = [wordIndex];
                 }
                 console.log(poemData);
             }
@@ -76,9 +75,9 @@ $(document).ready(function () {
         uiState = 'word_select';
         $('.dropdown-toggle').unbind();
         var parentButton = $(this).closest('.dropdown-menu').prev();
-        var wordID = parentButton.attr('id');
+	var wordID = parentButton.attr('id');
         selectedWordID = wordID;
-        selectedDevice = 'rhyme';
+        selectedDevice = 'rhymeswith';
         parentButton.text('Done');
     });
 
@@ -86,9 +85,9 @@ $(document).ready(function () {
         uiState = 'word_select';
         $('.dropdown-toggle').unbind();
         var parentButton = $(this).closest('.dropdown-menu').prev();
-        var wordID = parentButton.attr('id');
+	var wordID = parentButton.attr('id');
         selectedWordID = wordID;
-        selectedDevice = 'alliteration';
+        selectedDevice = 'alliterateswith';
         parentButton.text('Done');
     });
 
